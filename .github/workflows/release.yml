@@ -1,0 +1,165 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version
+        id: version
+        run: |
+          VERSION="v1.0.${{ github.run_number }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a ${{ steps.version.outputs.version }} -m "Release ${{ steps.version.outputs.version }}"
+          git push origin ${{ steps.version.outputs.version }}
+
+  build:
+    needs: release
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            name: helix-assist-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            name: helix-assist-linux-arm64
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: amd64
+            name: helix-assist-darwin-amd64
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: arm64
+            name: helix-assist-darwin-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-s -w" \
+            -o ${{ matrix.name }} \
+            ./cmd/helix-assist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}
+          retention-days: 1
+
+  publish:
+    needs: [release, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$PREV_TAG" ]; then
+            # First release - get all commits
+            COMMITS=$(git log --pretty=format:"- %s (%h) by %an" --reverse)
+            CONTRIBUTORS=$(git log --pretty=format:"%an" | sort -u | sed 's/^/- /' | paste -sd '\n')
+          else
+            # Get commits since last tag
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h) by %an")
+            CONTRIBUTORS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%an" | sort -u | sed 's/^/- /' | paste -sd '\n')
+          fi
+
+          # Create release notes
+          {
+            echo 'RELEASE_NOTES<<EOF'
+            echo "## Changes"
+            echo ""
+            if [ -z "$COMMITS" ]; then
+              echo "- No new commits"
+            else
+              echo "$COMMITS"
+            fi
+            echo ""
+            echo "## Contributors"
+            echo ""
+            if [ -z "$CONTRIBUTORS" ]; then
+              echo "- No contributors"
+            else
+              echo "$CONTRIBUTORS"
+            fi
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p ./release-assets
+          find ./artifacts -type f -exec cp {} ./release-assets/ \;
+          ls -lh ./release-assets/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.release.outputs.version }}
+          name: Release ${{ needs.release.outputs.version }}
+          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          draft: false
+          prerelease: false
+          files: ./release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
