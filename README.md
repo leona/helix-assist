@@ -3,7 +3,7 @@
 ![Build Status](https://github.com/leona/helix-assist/actions/workflows/release.yml/badge.svg)
 ![GitHub Release](https://img.shields.io/github/v/release/leona/helix-assist)
 
-A Go port of the [helix-gpt](https://github.com/leona/helix-gpt) LSP server, providing LLM code completions and actions tailored specifically for the Helix editor's LSP spec. This port serves as a more efficient, lightweight alternative using significantly less memory and resolving timeout issues and inconsistencies. Support is limited to OpenAI and Anthropic, with zero external dependencies.
+A Go port of the [helix-gpt](https://github.com/leona/helix-gpt) language server, providing LLM code completions and actions tailored specifically for the Helix editor's LSP spec. This port serves as a more efficient, lightweight alternative using significantly less memory and resolving timeout issues and inconsistencies. Support is limited to OpenAI and Anthropic, with zero external dependencies.
 
 ### Completions 
 
