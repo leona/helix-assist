@@ -5,6 +5,14 @@
 
 A Go port of the [helix-gpt](https://github.com/leona/helix-gpt) LSP server, providing LLM code completions and actions tailored specifically for the Helix editor's LSP spec. This port serves as a more efficient, lightweight alternative using significantly less memory and resolving timeout issues and inconsistencies. Support is limited to OpenAI and Anthropic, with zero external dependencies.
 
+Completion example
+
+![helix-assist example](https://github.com/leona/helix-assist/raw/master/assets/completions.gif)
+
+Code actions example (space + a)
+
+![helix-assist example](https://github.com/leona/helix-assist/raw/master/assets/actions.gif)
+
 ## Features
 
 - **Code Completions**: AI-powered code suggestions as you type
