@@ -22,7 +22,7 @@ type CodeActionCommand struct {
 var Commands = []CodeActionCommand{
 	{Key: "resolveDiagnostics", Label: "Resolve diagnostics", Query: "Resolve the diagnostics for this code."},
 	{Key: "improveCode", Label: "Improve code", Query: "Improve this code."},
-	{Key: "refactorFromComment", Label: "Refactor code from a comment", Query: "Refactor this code based on the comment."},
+	{Key: "refactorFromComment", Label: "Refactor code from a comment", Query: "Refactor this code based on the comment, and remove the comment."},
 }
 
 func CommandKeys() []string {
