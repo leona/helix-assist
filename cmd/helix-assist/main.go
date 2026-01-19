@@ -32,6 +32,7 @@ func main() {
 			cfg.OpenAIModel,
 			cfg.OpenAIEndpoint,
 			cfg.FetchTimeout,
+			logger,
 		)
 		registry.Register("openai", openaiProvider)
 		logger.Log("Registered OpenAI provider", "model:", cfg.OpenAIModel)
@@ -43,6 +44,7 @@ func main() {
 			cfg.AnthropicModel,
 			cfg.AnthropicEndpoint,
 			cfg.FetchTimeout,
+			logger,
 		)
 		registry.Register("anthropic", anthropicProvider)
 		logger.Log("Registered Anthropic provider", "model:", cfg.AnthropicModel)

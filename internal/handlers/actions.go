@@ -171,9 +171,11 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 	}
 
 	svc.Logger.Log("chat request content:", content)
+	svc.Logger.Log("chat request query:", query)
 
 	if len(cmdArg.Diagnostics) > 0 {
 		query += "\n\nDiagnostics: " + strings.Join(cmdArg.Diagnostics, "\n- ")
+		svc.Logger.Log("chat request with diagnostics:", query)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(h.cfg.ActionTimeout)*time.Millisecond)
@@ -191,6 +193,9 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 		}, h.cfg.ActionTimeout)
 		return
 	}
+
+	svc.Logger.Log("chat response received, result length:", len(resp.Result))
+	svc.Logger.Log("chat response result:", resp.Result)
 
 	if resp.Result == "" {
 		svc.Logger.Log("chat: no completion found")

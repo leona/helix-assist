@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/leona/helix-assist/internal/lsp"
 	"github.com/leona/helix-assist/internal/util"
 )
 
@@ -19,14 +19,16 @@ type OpenAIProvider struct {
 	model    string
 	endpoint string
 	timeout  time.Duration
+	logger   *lsp.Logger
 }
 
-func NewOpenAIProvider(apiKey, model, endpoint string, timeoutMs int) *OpenAIProvider {
+func NewOpenAIProvider(apiKey, model, endpoint string, timeoutMs int, logger *lsp.Logger) *OpenAIProvider {
 	return &OpenAIProvider{
 		apiKey:   apiKey,
 		model:    model,
 		endpoint: strings.TrimSuffix(endpoint, "/"),
 		timeout:  time.Duration(timeoutMs) * time.Millisecond,
+		logger:   logger,
 	}
 }
 
@@ -52,16 +54,8 @@ type responsesResponse struct {
 }
 
 func (p *OpenAIProvider) Completion(ctx context.Context, req CompletionRequest, filepath, languageID string, numSuggestions int) ([]string, error) {
-	instructions := fmt.Sprintf(`You are a %s code completion assistant. Complete the code at the cursor position.
-
-Rules:
-- Output ONLY the code that should be inserted at the cursor
-- Do NOT include any code that already exists before or after the cursor
-- Do NOT add explanations, comments, or markdown formatting
-- Do NOT repeat existing code
-- Generate syntactically correct %s code`, languageID, languageID)
-
-	userPrompt := fmt.Sprintf("File: %s\n\nCode before cursor:\n%s\n\n<CURSOR>\n\nCode after cursor:\n%s", filepath, req.ContentBefore, req.ContentAfter)
+	instructions := BuildCompletionSystemPrompt(languageID)
+	userPrompt := BuildCompletionUserPrompt(filepath, req.ContentBefore, req.ContentAfter)
 
 	results := make([]string, 0, numSuggestions)
 
@@ -112,15 +106,8 @@ Rules:
 func (p *OpenAIProvider) Chat(ctx context.Context, query, content, filepath, languageID string) (*ChatResponse, error) {
 	cleanFilepath := strings.TrimPrefix(filepath, "file://")
 
-	instructions := fmt.Sprintf(`You are an AI programming assistant.
-Follow the user's requirements carefully & to the letter.
-- Each code block starts with `+"```"+` and // FILEPATH.
-- You always answer with %s code.
-- When the user asks you to document something, you must answer in the form of a %s code block.
-Your expertise is strictly limited to software development topics.
-Keep your answers short and impersonal.`, languageID, languageID)
-
-	userContent := fmt.Sprintf("I have the following code in the selection:\n```%s\n// FILEPATH: %s\n%s\n\n%s", languageID, cleanFilepath, content, query)
+	instructions := BuildChatSystemPrompt(languageID)
+	userContent := BuildChatUserPrompt(languageID, cleanFilepath, content, query)
 
 	respReq := responsesRequest{
 		Model:        p.model,
@@ -135,10 +122,15 @@ Keep your answers short and impersonal.`, languageID, languageID)
 		},
 	}
 
+	jsonReq, _ := json.MarshalIndent(respReq, "", "  ")
+	p.logger.Log("DEBUG [OpenAI Chat]: Request:", string(jsonReq))
+
 	resp, err := p.doRequest(ctx, "/responses", respReq)
 	if err != nil {
 		return nil, err
 	}
+
+	p.logger.Log("DEBUG [OpenAI Chat]: Raw response:", string(resp))
 
 	var respResp responsesResponse
 	if err := json.Unmarshal(resp, &respResp); err != nil {
@@ -164,8 +156,8 @@ Keep your answers short and impersonal.`, languageID, languageID)
 		return nil, fmt.Errorf("no completion found")
 	}
 
-	result := util.ExtractCodeBlock(filepath, resultText, languageID)
-	return &ChatResponse{Result: result}, nil
+	p.logger.Log("DEBUG [OpenAI Chat]: Extracted text:", resultText)
+	return &ChatResponse{Result: resultText}, nil
 }
 
 func (p *OpenAIProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
@@ -173,9 +165,6 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, endpoint string, body an
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
-
-	fmt.Fprintf(os.Stderr, "DEBUG: Request to %s\n", endpoint)
-	fmt.Fprintf(os.Stderr, "DEBUG: Body: %s\n", string(jsonBody))
 
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
@@ -199,9 +188,6 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, endpoint string, body an
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)
 	}
-
-	fmt.Fprintf(os.Stderr, "DEBUG: Response status: %d\n", resp.StatusCode)
-	fmt.Fprintf(os.Stderr, "DEBUG: Response body: %s\n", string(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(respBody))

@@ -97,3 +97,17 @@ func PadContent(text string, padding int) string {
 
 	return strings.Join(lines, "\n")
 }
+
+func UniqueStrings(items []string) []string {
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(items))
+
+	for _, item := range items {
+		if !seen[item] {
+			seen[item] = true
+			result = append(result, item)
+		}
+	}
+
+	return result
+}

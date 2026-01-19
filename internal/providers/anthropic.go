@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/leona/helix-assist/internal/lsp"
 	"github.com/leona/helix-assist/internal/util"
 )
 
@@ -18,14 +19,16 @@ type AnthropicProvider struct {
 	model    string
 	endpoint string
 	timeout  time.Duration
+	logger   *lsp.Logger
 }
 
-func NewAnthropicProvider(apiKey, model, endpoint string, timeoutMs int) *AnthropicProvider {
+func NewAnthropicProvider(apiKey, model, endpoint string, timeoutMs int, logger *lsp.Logger) *AnthropicProvider {
 	return &AnthropicProvider{
 		apiKey:   apiKey,
 		model:    model,
 		endpoint: strings.TrimSuffix(endpoint, "/"),
 		timeout:  time.Duration(timeoutMs) * time.Millisecond,
+		logger:   logger,
 	}
 }
 
@@ -60,16 +63,8 @@ type anthropicResponse struct {
 }
 
 func (p *AnthropicProvider) Completion(ctx context.Context, req CompletionRequest, filepath, languageID string, numSuggestions int) ([]string, error) {
-	systemPrompt := fmt.Sprintf(`You are a %s code completion assistant. Complete the code at the cursor position.
-
-Rules:
-- Output ONLY the code that should be inserted at the cursor
-- Do NOT include any code that already exists before or after the cursor
-- Do NOT add explanations, comments, or markdown formatting
-- Do NOT repeat existing code
-- Generate syntactically correct %s code`, languageID, languageID)
-
-	userPrompt := fmt.Sprintf("File: %s\n\nCode before cursor:\n%s\n\n<CURSOR>\n\nCode after cursor:\n%s", filepath, req.ContentBefore, req.ContentAfter)
+	systemPrompt := BuildCompletionSystemPrompt(languageID)
+	userPrompt := BuildCompletionUserPrompt(filepath, req.ContentBefore, req.ContentAfter)
 
 	temperature := 0.0
 
@@ -127,16 +122,8 @@ Rules:
 func (p *AnthropicProvider) Chat(ctx context.Context, query, content, filepath, languageID string) (*ChatResponse, error) {
 	cleanFilepath := strings.TrimPrefix(filepath, "file://")
 
-	systemPrompt := fmt.Sprintf(`You are an AI programming assistant.
-Follow the user's requirements carefully & to the letter.
-- Each code block starts with `+"```"+` and // FILEPATH.
-- You always answer with %s code.
-- When the user asks you to document something, you must answer in the form of a %s code block.
-Your expertise is strictly limited to software development topics.
-For questions not related to software development, simply give a reminder that you are an AI programming assistant.
-Keep your answers short and impersonal.`, languageID, languageID)
-
-	userContent := fmt.Sprintf("I have the following code in the selection:\n```%s\n// FILEPATH: %s\n%s\n\n%s", languageID, cleanFilepath, content, query)
+	systemPrompt := BuildChatSystemPrompt(languageID)
+	userContent := BuildChatUserPrompt(languageID, cleanFilepath, content, query)
 
 	apiReq := anthropicRequest{
 		Model:     p.model,
@@ -153,10 +140,15 @@ Keep your answers short and impersonal.`, languageID, languageID)
 		},
 	}
 
+	jsonReq, _ := json.MarshalIndent(apiReq, "", "  ")
+	p.logger.Log("DEBUG [Anthropic Chat]: Request:", string(jsonReq))
+
 	resp, err := p.doRequest(ctx, "/v1/messages", apiReq)
 	if err != nil {
 		return nil, err
 	}
+
+	p.logger.Log("DEBUG [Anthropic Chat]: Raw response:", string(resp))
 
 	var apiResp anthropicResponse
 	if err := json.Unmarshal(resp, &apiResp); err != nil {
@@ -175,8 +167,8 @@ Keep your answers short and impersonal.`, languageID, languageID)
 		}
 	}
 
-	result := util.ExtractCodeBlock(filepath, resultText, languageID)
-	return &ChatResponse{Result: result}, nil
+	p.logger.Log("DEBUG [Anthropic Chat]: Extracted text:", resultText)
+	return &ChatResponse{Result: resultText}, nil
 }
 
 func (p *AnthropicProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
