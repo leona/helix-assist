@@ -119,9 +119,10 @@ language-servers = ["pylsp", "helix-assist"]
 
 ## Debugging
 
-Monitor helix-assist activity by tailing the log file:
+Monitor helix-assist activity by tailing the log files:
 
 ```bash
 tail -f ~/.cache/helix-assist.log
+tail -f ~/.cache/helix/helix.log
 ```
 
