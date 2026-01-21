@@ -10,10 +10,12 @@ const (
 	EventApplyEdit          = "workspace/applyEdit"
 	EventExecuteCommand     = "workspace/executeCommand"
 	EventInitialize         = "initialize"
+	EventInitialized        = "initialized"
 	EventShutdown           = "shutdown"
 	EventExit               = "exit"
 	EventPublishDiagnostics = "textDocument/publishDiagnostics"
 	EventProgress           = "$/progress"
+	EventShowMessage        = "window/showMessage"
 )
 
 type WorkDoneProgressBegin struct {
@@ -39,6 +41,15 @@ type ProgressParams struct {
 	Token string `json:"token"`
 	Value any    `json:"value"`
 }
+
+type MessageType int
+
+const (
+	MessageTypeError   MessageType = 1
+	MessageTypeWarning MessageType = 2
+	MessageTypeInfo    MessageType = 3
+	MessageTypeLog     MessageType = 4
+)
 
 type DiagnosticSeverity int
 
@@ -192,6 +203,11 @@ type ApplyWorkspaceEditParams struct {
 type PublishDiagnosticsParams struct {
 	URI         string       `json:"uri"`
 	Diagnostics []Diagnostic `json:"diagnostics"`
+}
+
+type ShowMessageParams struct {
+	Type    MessageType `json:"type"`
+	Message string      `json:"message"`
 }
 
 type ServerCapabilities struct {

@@ -71,7 +71,6 @@ func (h *CompletionHandler) doCompletion(svc *lsp.Service, msg *lsp.JSONRPCMessa
 
 	if buffer.Version > lastContentVersion {
 		svc.Logger.Log("skipping completion - content is stale")
-		svc.ResetDiagnostics()
 		h.sendEmptyCompletion(svc, msg.ID)
 		return
 	}
@@ -79,34 +78,31 @@ func (h *CompletionHandler) doCompletion(svc *lsp.Service, msg *lsp.JSONRPCMessa
 	content = util.GetContent(buffer.Text, params.Position.Line, params.Position.Character)
 	svc.Logger.Log("calling completion", "language:", buffer.LanguageID)
 
-	diagRange := lsp.Range{
-		Start: lsp.Position{Line: params.Position.Line, Character: 0},
-		End:   lsp.Position{Line: params.Position.Line + 1, Character: 0},
-	}
-
 	var progress *util.ProgressIndicator
 
 	if h.cfg.EnableProgressSpinner {
-		progress = util.NewProgressIndicator(svc, h.cfg, diagRange, h.cfg.CompletionTimeout)
+		progress = util.NewProgressIndicator(svc, h.cfg)
 		progress.Start()
 		defer progress.Stop()
 	} else {
-		svc.SendDiagnostics([]lsp.Diagnostic{
-			{
-				Message:  "Fetching completion...",
-				Severity: lsp.SeverityInformation,
-				Range:    diagRange,
-			},
-		}, h.cfg.CompletionTimeout)
-		defer svc.ResetDiagnostics()
+		svc.SendShowMessage(lsp.MessageTypeInfo, "Fetching completion...")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(h.cfg.CompletionTimeout)*time.Millisecond)
 	defer cancel()
+	contentAfter := content.ContentImmediatelyAfter
+
+	if content.ContentAfter != "" {
+		if contentAfter != "" {
+			contentAfter += "\n" + content.ContentAfter
+		} else {
+			contentAfter = content.ContentAfter
+		}
+	}
 
 	hints, err := h.registry.Completion(ctx, providers.CompletionRequest{
 		ContentBefore: content.ContentBefore,
-		ContentAfter:  content.ContentAfter,
+		ContentAfter:  contentAfter,
 	}, params.TextDocument.URI, buffer.LanguageID, h.cfg.NumSuggestions)
 
 	if err != nil {
@@ -120,7 +116,7 @@ func (h *CompletionHandler) doCompletion(svc *lsp.Service, msg *lsp.JSONRPCMessa
 					End:   lsp.Position{Line: params.Position.Line + 1, Character: 0},
 				},
 			},
-		}, h.cfg.CompletionTimeout)
+		}, 0)
 		return
 	}
 
@@ -139,8 +135,30 @@ func (h *CompletionHandler) doCompletion(svc *lsp.Service, msg *lsp.JSONRPCMessa
 			Items:        items,
 		},
 	})
+}
 
-	svc.ResetDiagnostics()
+func findOverlapSuffix(hint, suffix string) int {
+	if suffix == "" {
+		return 0
+	}
+
+	hint = strings.TrimRight(hint, " \t")
+	maxOverlap := len(hint)
+
+	if len(suffix) < maxOverlap {
+		maxOverlap = len(suffix)
+	}
+
+	for i := maxOverlap; i > 0; i-- {
+		hintSuffix := hint[len(hint)-i:]
+		suffixPrefix := suffix[:i]
+
+		if hintSuffix == suffixPrefix {
+			return i
+		}
+	}
+
+	return 0
 }
 
 func (h *CompletionHandler) buildCompletionItem(hint string, content util.ContentParts, position lsp.Position) lsp.CompletionItem {
@@ -167,23 +185,48 @@ func (h *CompletionHandler) buildCompletionItem(hint string, content util.Conten
 		label = strings.TrimSpace(hint[:20])
 	}
 
-	return lsp.CompletionItem{
-		Label:            label,
-		Kind:             1,
-		Preselect:        true,
-		Detail:           hint,
-		InsertText:       hint,
-		InsertTextFormat: 1,
-		SortText:         "00000",
-		AdditionalTextEdits: []lsp.TextEdit{
-			{
-				Range: lsp.Range{
-					Start: lsp.Position{Line: cleanLine, Character: cleanCharacter},
-					End:   lsp.Position{Line: cleanLine, Character: cleanCharacter + len(content.ContentImmediatelyAfter)},
-				},
-				NewText: "",
+	overlapLen := findOverlapSuffix(hint, content.ContentImmediatelyAfter)
+
+	var additionalEdits []lsp.TextEdit
+
+	if overlapLen > 0 {
+		additionalEdits = append(additionalEdits, lsp.TextEdit{
+			Range: lsp.Range{
+				Start: lsp.Position{Line: cleanLine, Character: cleanCharacter},
+				End:   lsp.Position{Line: cleanLine, Character: cleanCharacter + overlapLen},
 			},
-		},
+			NewText: "",
+		})
+	} else if content.ContentImmediatelyAfter != "" {
+		firstChar := content.ContentImmediatelyAfter[0]
+
+		if firstChar == ')' || firstChar == '}' || firstChar == ']' || firstChar == '>' {
+			restOfLine := content.ContentImmediatelyAfter[1:]
+			isIsolated := len(content.ContentImmediatelyAfter) == 1 ||
+				len(strings.TrimLeft(restOfLine, " \t")) == 0 ||
+				restOfLine[0] == '\n' || restOfLine[0] == '\r'
+
+			if isIsolated {
+				additionalEdits = append(additionalEdits, lsp.TextEdit{
+					Range: lsp.Range{
+						Start: lsp.Position{Line: cleanLine, Character: cleanCharacter},
+						End:   lsp.Position{Line: cleanLine, Character: cleanCharacter + 1},
+					},
+					NewText: "",
+				})
+			}
+		}
+	}
+
+	return lsp.CompletionItem{
+		Label:               label,
+		Kind:                1,
+		Preselect:           true,
+		Detail:              hint,
+		InsertText:          hint,
+		InsertTextFormat:    1,
+		SortText:            "00000",
+		AdditionalTextEdits: additionalEdits,
 	}
 }
 

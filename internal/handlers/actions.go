@@ -147,18 +147,11 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 	var progress *util.ProgressIndicator
 
 	if h.cfg.EnableProgressSpinner {
-		progress = util.NewProgressIndicator(svc, h.cfg, cmdArg.Range, h.cfg.ActionTimeout)
+		progress = util.NewProgressIndicator(svc, h.cfg)
 		progress.Start()
 		defer progress.Stop()
 	} else {
-		svc.SendDiagnostics([]lsp.Diagnostic{
-			{
-				Message:  "Executing " + params.Command + "...",
-				Range:    cmdArg.Range,
-				Severity: lsp.SeverityInformation,
-			},
-		}, h.cfg.ActionTimeout)
-		defer svc.ResetDiagnostics()
+		svc.SendShowMessage(lsp.MessageTypeInfo, "Executing "+params.Command+"...")
 	}
 
 	content := svc.Buffers.GetContentFromRange(currentURI, cmdArg.Range)
@@ -190,7 +183,7 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 				Severity: lsp.SeverityError,
 				Range:    cmdArg.Range,
 			},
-		}, h.cfg.ActionTimeout)
+		}, 0)
 		return
 	}
 
@@ -205,7 +198,7 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 				Severity: lsp.SeverityError,
 				Range:    cmdArg.Range,
 			},
-		}, h.cfg.ActionTimeout)
+		}, 0)
 		return
 	}
 
@@ -229,8 +222,6 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 			},
 		}),
 	})
-
-	svc.ResetDiagnostics()
 }
 
 func mustMarshal(v any) json.RawMessage {

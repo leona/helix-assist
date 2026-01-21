@@ -12,6 +12,8 @@ import (
 	"github.com/leona/helix-assist/internal/providers"
 )
 
+var Version = "dev"
+
 func main() {
 	cfg := config.Load()
 
@@ -72,7 +74,7 @@ func main() {
 		},
 	}
 
-	svc := lsp.NewService(capabilities, logger)
+	svc := lsp.NewService(capabilities, logger, Version)
 	completionHandler := handlers.NewCompletionHandler(cfg, registry)
 	completionHandler.Register(svc)
 	actionHandler := handlers.NewActionHandler(cfg, registry)

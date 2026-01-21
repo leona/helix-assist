@@ -1,4 +1,5 @@
 BINARY_NAME=helix-assist
+TEST_BINARY_NAME=helix-assist-test
 
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -8,8 +9,11 @@ GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
 
 MAIN_PACKAGE=./cmd/helix-assist
+TEST_PACKAGE=./cmd/helix-assist-test
 
 BUILD_DIR=build
+
+PROVIDER?=openai
 
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
@@ -20,6 +24,7 @@ LDFLAGS=-ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X 
 .PHONY: all build clean test deps help
 .PHONY: linux-amd64 linux-arm64 linux-arm darwin-amd64 darwin-arm64 windows-amd64
 .PHONY: nixos-amd64 freebsd-amd64 build-all install
+.PHONY: build-test install-test run-tests
 
 all: build
 
@@ -35,6 +40,24 @@ install:
 	@echo "Installing $(BINARY_NAME)..."
 	$(GOCMD) install $(LDFLAGS) $(MAIN_PACKAGE)
 	@echo "Install complete"
+
+# Build test tool for current platform
+build-test:
+	@echo "Building $(TEST_BINARY_NAME) for current platform..."
+	@mkdir -p $(BUILD_DIR)
+	$(GOBUILD) -o $(BUILD_DIR)/$(TEST_BINARY_NAME) $(TEST_PACKAGE)
+	@echo "Build complete: $(BUILD_DIR)/$(TEST_BINARY_NAME)"
+
+# Install test tool to $GOPATH/bin
+install-test:
+	@echo "Installing $(TEST_BINARY_NAME)..."
+	$(GOCMD) install $(TEST_PACKAGE)
+	@echo "Install complete"
+
+# Run completion tests
+run-tests: build-test
+	@echo "Running completion tests..."
+	$(BUILD_DIR)/$(TEST_BINARY_NAME) --testdir ./tests/completions --provider $(PROVIDER)
 
 # Build for Linux AMD64
 linux-amd64:
@@ -95,7 +118,7 @@ clean:
 	@echo "Cleaning..."
 	$(GOCLEAN)
 	@rm -rf $(BUILD_DIR)
-	@rm -f $(BINARY_NAME)
+	@rm -f $(BINARY_NAME) $(TEST_BINARY_NAME)
 	@echo "Clean complete"
 
 # Download dependencies
@@ -110,6 +133,9 @@ help:
 	@echo "Available targets:"
 	@echo "  make build          - Build for current platform (default)"
 	@echo "  make install        - Install to \$$GOPATH/bin"
+	@echo "  make build-test     - Build test tool for current platform"
+	@echo "  make install-test   - Install test tool to \$$GOPATH/bin"
+	@echo "  make run-tests      - Run completion tests (PROVIDER=openai|anthropic)"
 	@echo "  make linux-amd64    - Build for Linux AMD64"
 	@echo "  make linux-arm64    - Build for Linux ARM64"
 	@echo "  make linux-arm      - Build for Linux ARM"

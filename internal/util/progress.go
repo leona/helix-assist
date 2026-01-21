@@ -18,19 +18,15 @@ type ProgressIndicator struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	startTime      time.Time
-	diagRange      lsp.Range
-	timeout        int
 	mu             sync.Mutex
 }
 
-func NewProgressIndicator(svc *lsp.Service, cfg *config.Config, diagRange lsp.Range, timeout int) *ProgressIndicator {
+func NewProgressIndicator(svc *lsp.Service, cfg *config.Config) *ProgressIndicator {
 	return &ProgressIndicator{
 		svc:            svc,
 		enabled:        cfg.EnableProgressSpinner,
 		updateInterval: time.Duration(cfg.ProgressUpdateInterval) * time.Millisecond,
 		spinnerFrames:  []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"},
-		diagRange:      diagRange,
-		timeout:        timeout,
 	}
 }
 
@@ -60,7 +56,6 @@ func (p *ProgressIndicator) Stop() {
 	}
 
 	p.mu.Unlock()
-	p.svc.ResetDiagnostics()
 }
 
 func (p *ProgressIndicator) animate() {
@@ -75,15 +70,9 @@ func (p *ProgressIndicator) animate() {
 			return
 		case <-ticker.C:
 			elapsed := time.Since(p.startTime)
-			message := fmt.Sprintf("%s (%s)", p.spinnerFrames[frameIndex], p.formatElapsed(elapsed))
+			message := fmt.Sprintf(" %s (%s)", p.spinnerFrames[frameIndex], p.formatElapsed(elapsed))
 
-			p.svc.SendDiagnostics([]lsp.Diagnostic{
-				{
-					Message:  message,
-					Severity: lsp.SeverityInformation,
-					Range:    p.diagRange,
-				},
-			}, p.timeout)
+			p.svc.SendShowMessage(lsp.MessageTypeInfo, message)
 
 			frameIndex = (frameIndex + 1) % len(p.spinnerFrames)
 		}

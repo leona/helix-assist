@@ -90,17 +90,19 @@ type Service struct {
 	Buffers      *BufferStore
 	Capabilities ServerCapabilities
 	Logger       *Logger
+	Version      string
 	handlers     map[string][]EventHandler
 	mu           sync.RWMutex
 	stdin        io.Reader
 	stdout       io.Writer
 }
 
-func NewService(capabilities ServerCapabilities, logger *Logger) *Service {
+func NewService(capabilities ServerCapabilities, logger *Logger, version string) *Service {
 	svc := &Service{
 		Buffers:      NewBufferStore(),
 		Capabilities: capabilities,
 		Logger:       logger,
+		Version:      version,
 		handlers:     make(map[string][]EventHandler),
 		stdin:        os.Stdin,
 		stdout:       os.Stdout,
@@ -118,6 +120,11 @@ func (s *Service) registerDefaultHandlers() {
 				Capabilities: svc.Capabilities,
 			},
 		})
+	})
+
+	s.On(EventInitialized, func(svc *Service, msg *JSONRPCMessage) {
+		svc.Logger.Log("received initialized notification")
+		svc.SendShowMessage(MessageTypeInfo, "helix-assist ("+svc.Version+") has started")
 	})
 
 	s.On(EventDidOpen, func(svc *Service, msg *JSONRPCMessage) {
@@ -248,22 +255,6 @@ func (s *Service) SendDiagnostics(diagnostics []Diagnostic, timeoutMs int) {
 	}
 }
 
-func (s *Service) ResetDiagnostics() {
-	uri := s.Buffers.CurrentURI()
-
-	if uri == "" {
-		return
-	}
-
-	s.Send(&JSONRPCMessage{
-		Method: EventPublishDiagnostics,
-		Params: mustMarshal(PublishDiagnosticsParams{
-			URI:         uri,
-			Diagnostics: []Diagnostic{},
-		}),
-	})
-}
-
 func (s *Service) SendProgressBegin(token, title string) {
 	s.Send(&JSONRPCMessage{
 		Method: EventProgress,
@@ -298,6 +289,16 @@ func (s *Service) SendProgressEnd(token string) {
 			Value: WorkDoneProgressEnd{
 				Kind: "end",
 			},
+		}),
+	})
+}
+
+func (s *Service) SendShowMessage(msgType MessageType, message string) {
+	s.Send(&JSONRPCMessage{
+		Method: EventShowMessage,
+		Params: mustMarshal(ShowMessageParams{
+			Type:    msgType,
+			Message: message,
 		}),
 	})
 }
