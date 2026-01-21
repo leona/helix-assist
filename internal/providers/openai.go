@@ -14,22 +14,46 @@ import (
 	"github.com/leona/helix-assist/internal/util"
 )
 
-type OpenAIProvider struct {
-	apiKey   string
-	model    string
-	endpoint string
-	timeout  time.Duration
-	logger   *lsp.Logger
+var reasoningModels = map[string]bool{
+	"gpt-5.2":           true,
+	"gpt-5.1":           true,
+	"gpt-5":             true,
+	"gpt-5-mini":        true,
+	"gpt-5.2-codex":     true,
+	"gpt-5.1-codex-max": true,
+	"gpt-5.1-codex":     true,
+	"gpt-5-codex":       true,
 }
 
-func NewOpenAIProvider(apiKey, model, endpoint string, timeoutMs int, logger *lsp.Logger) *OpenAIProvider {
-	return &OpenAIProvider{
-		apiKey:   apiKey,
-		model:    model,
-		endpoint: strings.TrimSuffix(endpoint, "/"),
-		timeout:  time.Duration(timeoutMs) * time.Millisecond,
-		logger:   logger,
+type OpenAIProvider struct {
+	apiKey    string
+	model     string
+	chatModel string
+	endpoint  string
+	timeout   time.Duration
+	logger    *lsp.Logger
+}
+
+func isReasoningModel(model string) bool {
+	return reasoningModels[model]
+}
+
+func NewOpenAIProvider(apiKey, model, chatModel, endpoint string, timeoutMs int, logger *lsp.Logger) *OpenAIProvider {
+	if chatModel == "" {
+		chatModel = model
 	}
+	return &OpenAIProvider{
+		apiKey:    apiKey,
+		model:     model,
+		chatModel: chatModel,
+		endpoint:  strings.TrimSuffix(endpoint, "/"),
+		timeout:   time.Duration(timeoutMs) * time.Millisecond,
+		logger:    logger,
+	}
+}
+
+type reasoningConfig struct {
+	Effort string `json:"effort"`
 }
 
 type responsesRequest struct {
@@ -40,6 +64,7 @@ type responsesRequest struct {
 	ServiceTier  string                 `json:"service_tier,omitempty"`
 	MaxToolCalls int                    `json:"max_tool_calls,omitempty"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Reasoning    *reasoningConfig       `json:"reasoning,omitempty"`
 }
 
 type responsesResponse struct {
@@ -71,6 +96,12 @@ func (p *OpenAIProvider) Completion(ctx context.Context, req CompletionRequest, 
 				"language": languageID,
 				"filepath": filepath,
 			},
+		}
+
+		if isReasoningModel(p.model) {
+			respReq.Reasoning = &reasoningConfig{
+				Effort: "minimal",
+			}
 		}
 
 		resp, err := p.doRequest(ctx, "/responses", respReq)
@@ -110,7 +141,7 @@ func (p *OpenAIProvider) Chat(ctx context.Context, query, content, filepath, lan
 	userContent := BuildChatUserPrompt(languageID, cleanFilepath, content, query)
 
 	respReq := responsesRequest{
-		Model:        p.model,
+		Model:        p.chatModel,
 		Instructions: instructions,
 		Input:        userContent,
 		Store:        false,
@@ -122,17 +153,23 @@ func (p *OpenAIProvider) Chat(ctx context.Context, query, content, filepath, lan
 		},
 	}
 
+	if isReasoningModel(p.chatModel) {
+		respReq.Reasoning = &reasoningConfig{
+			Effort: "minimal",
+		}
+	}
+
 	jsonReq, _ := json.MarshalIndent(respReq, "", "  ")
 	p.logger.Log("DEBUG [OpenAI Chat]: Request:", string(jsonReq))
-
 	resp, err := p.doRequest(ctx, "/responses", respReq)
+
 	if err != nil {
 		return nil, err
 	}
 
 	p.logger.Log("DEBUG [OpenAI Chat]: Raw response:", string(resp))
-
 	var respResp responsesResponse
+
 	if err := json.Unmarshal(resp, &respResp); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}

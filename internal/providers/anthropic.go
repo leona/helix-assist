@@ -15,20 +15,26 @@ import (
 )
 
 type AnthropicProvider struct {
-	apiKey   string
-	model    string
-	endpoint string
-	timeout  time.Duration
-	logger   *lsp.Logger
+	apiKey    string
+	model     string
+	chatModel string
+	endpoint  string
+	timeout   time.Duration
+	logger    *lsp.Logger
 }
 
-func NewAnthropicProvider(apiKey, model, endpoint string, timeoutMs int, logger *lsp.Logger) *AnthropicProvider {
+func NewAnthropicProvider(apiKey, model, chatModel, endpoint string, timeoutMs int, logger *lsp.Logger) *AnthropicProvider {
+	if chatModel == "" {
+		chatModel = model
+	}
+
 	return &AnthropicProvider{
-		apiKey:   apiKey,
-		model:    model,
-		endpoint: strings.TrimSuffix(endpoint, "/"),
-		timeout:  time.Duration(timeoutMs) * time.Millisecond,
-		logger:   logger,
+		apiKey:    apiKey,
+		model:     model,
+		chatModel: chatModel,
+		endpoint:  strings.TrimSuffix(endpoint, "/"),
+		timeout:   time.Duration(timeoutMs) * time.Millisecond,
+		logger:    logger,
 	}
 }
 
@@ -126,7 +132,7 @@ func (p *AnthropicProvider) Chat(ctx context.Context, query, content, filepath, 
 	userContent := BuildChatUserPrompt(languageID, cleanFilepath, content, query)
 
 	apiReq := anthropicRequest{
-		Model:     p.model,
+		Model:     p.chatModel,
 		MaxTokens: 8192,
 		System: []anthropicSystemContent{
 			{

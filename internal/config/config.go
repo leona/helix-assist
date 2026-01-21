@@ -11,9 +11,11 @@ type Config struct {
 	Handler                string
 	OpenAIKey              string
 	OpenAIModel            string
+	OpenAIModelForChat     string
 	OpenAIEndpoint         string
 	AnthropicKey           string
 	AnthropicModel         string
+	AnthropicModelForChat  string
 	AnthropicEndpoint      string
 	Debounce               int
 	TriggerCharacters      []string
@@ -31,8 +33,10 @@ func DefaultConfig() *Config {
 	return &Config{
 		Handler:                "openai",
 		OpenAIModel:            "gpt-4.1-mini",
+		OpenAIModelForChat:     "gpt-5",
 		OpenAIEndpoint:         "https://api.openai.com/v1",
-		AnthropicModel:         "claude-sonnet-4-5",
+		AnthropicModel:         "claude-haiku-4-5",
+		AnthropicModelForChat:  "claude-sonnet-4-5",
 		AnthropicEndpoint:      "https://api.anthropic.com",
 		Debounce:               200,
 		TriggerCharacters:      []string{"{", "(", " "},
@@ -57,6 +61,8 @@ func Load() *Config {
 	anthropicKey := flag.String("anthropic-key", getEnvOrDefault("ANTHROPIC_API_KEY", ""), "Anthropic API key")
 	anthropicModel := flag.String("anthropic-model", getEnvOrDefault("ANTHROPIC_MODEL", cfg.AnthropicModel), "Anthropic model")
 	anthropicEndpoint := flag.String("anthropic-endpoint", getEnvOrDefault("ANTHROPIC_ENDPOINT", cfg.AnthropicEndpoint), "Anthropic API endpoint")
+	openaiModelForChat := flag.String("openai-model-for-chat", getEnvOrDefault("OPENAI_MODEL_FOR_CHAT", cfg.OpenAIModelForChat), "OpenAI model for chat actions (defaults to openai-model)")
+	anthropicModelForChat := flag.String("anthropic-model-for-chat", getEnvOrDefault("ANTHROPIC_MODEL_FOR_CHAT", cfg.AnthropicModelForChat), "Anthropic model for chat actions (defaults to anthropic-model)")
 	debounce := flag.Int("debounce", getEnvOrDefaultInt("DEBOUNCE", cfg.Debounce), "Debounce delay (ms)")
 	triggerChars := flag.String("trigger-chars", getEnvOrDefault("TRIGGER_CHARACTERS", "{||(|| "), "Completion trigger characters (separated by ||)")
 	numSuggestions := flag.Int("num-suggestions", getEnvOrDefaultInt("NUM_SUGGESTIONS", cfg.NumSuggestions), "Number of suggestions")
@@ -73,9 +79,11 @@ func Load() *Config {
 	cfg.Handler = *handler
 	cfg.OpenAIKey = *openaiKey
 	cfg.OpenAIModel = *openaiModel
+	cfg.OpenAIModelForChat = *openaiModelForChat
 	cfg.OpenAIEndpoint = *openaiEndpoint
 	cfg.AnthropicKey = *anthropicKey
 	cfg.AnthropicModel = *anthropicModel
+	cfg.AnthropicModelForChat = *anthropicModelForChat
 	cfg.AnthropicEndpoint = *anthropicEndpoint
 	cfg.Debounce = *debounce
 	cfg.TriggerCharacters = strings.Split(*triggerChars, "||")
