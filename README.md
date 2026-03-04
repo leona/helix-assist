@@ -1,4 +1,4 @@
-> Graduated from autocomplete to full AI agents? Check out [kb](https://github.com/leona/kb) — a shared knowledge base for Claude Code, Codex, and OpenCode.
+> Graduated from autocomplete to full AI agents? Check out [kb](https://github.com/leona/kb) - a shared knowledge base for Claude Code, Codex, and OpenCode.
 
 # helix-assist
 
