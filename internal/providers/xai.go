@@ -14,7 +14,7 @@ import (
 	"github.com/leona/helix-assist/internal/util"
 )
 
-type AnthropicProvider struct {
+type XAIProvider struct {
 	apiKey    string
 	model     string
 	chatModel string
@@ -23,12 +23,14 @@ type AnthropicProvider struct {
 	logger    *lsp.Logger
 }
 
-func NewAnthropicProvider(apiKey, model, chatModel, endpoint string, timeoutMs int, logger *lsp.Logger) *AnthropicProvider {
+func NewXAIProvider(apiKey, model, chatModel, endpoint string, timeoutMs int, logger *lsp.Logger) *XAIProvider {
 	if chatModel == "" {
 		chatModel = model
 	}
-
-	return &AnthropicProvider{
+	if endpoint == "" {
+		endpoint = "https://api.x.ai"
+	}
+	return &XAIProvider{
 		apiKey:    apiKey,
 		model:     model,
 		chatModel: chatModel,
@@ -38,42 +40,31 @@ func NewAnthropicProvider(apiKey, model, chatModel, endpoint string, timeoutMs i
 	}
 }
 
-type anthropicMessage struct {
+type xaiMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-type anthropicCacheControl struct {
-	Type string `json:"type"`
+type xaiRequest struct {
+	Model       string       `json:"model"`
+	MaxTokens   int          `json:"max_tokens"`
+	Messages    []xaiMessage `json:"messages"`
+	Temperature float64      `json:"temperature,omitempty"`
 }
 
-type anthropicSystemContent struct {
-	Type         string                 `json:"type"`
-	Text         string                 `json:"text"`
-	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
+type xaiResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
 }
 
-type anthropicRequest struct {
-	Model       string                   `json:"model"`
-	MaxTokens   int                      `json:"max_tokens"`
-	System      []anthropicSystemContent `json:"system,omitempty"`
-	Messages    []anthropicMessage       `json:"messages"`
-	Temperature float64                  `json:"temperature,omitempty"`
-}
-
-type anthropicResponse struct {
-	Content []struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
-	} `json:"content"`
-}
-
-func (p *AnthropicProvider) Completion(ctx context.Context, req CompletionRequest, filepath, languageID string, numSuggestions int) ([]string, error) {
+func (p *XAIProvider) Completion(ctx context.Context, req CompletionRequest, filepath, languageID string, numSuggestions int) ([]string, error) {
 	systemPrompt := BuildCompletionSystemPrompt(languageID)
 	userPrompt := BuildCompletionUserPrompt(filepath, req.ContentBefore, req.ContentAfter)
 
 	temperature := 0.0
-
 	if numSuggestions > 1 {
 		temperature = 0.4
 	}
@@ -81,24 +72,17 @@ func (p *AnthropicProvider) Completion(ctx context.Context, req CompletionReques
 	results := make([]string, 0, numSuggestions)
 
 	for i := 0; i < numSuggestions; i++ {
-		apiReq := anthropicRequest{
+		apiReq := xaiRequest{
 			Model:     p.model,
 			MaxTokens: 256,
-			System: []anthropicSystemContent{
-				{
-					Type:         "text",
-					Text:         systemPrompt,
-					CacheControl: &anthropicCacheControl{Type: "ephemeral"},
-				},
-			},
-			Temperature: temperature,
-			Messages: []anthropicMessage{
+			Messages: []xaiMessage{
+				{Role: "system", Content: systemPrompt},
 				{Role: "user", Content: userPrompt},
 			},
+			Temperature: temperature,
 		}
 
-		resp, err := p.doRequest(ctx, "/v1/messages", apiReq)
-
+		resp, err := p.doRequest(ctx, "/v1/chat/completions", apiReq)
 		if err != nil {
 			if len(results) > 0 {
 				break
@@ -106,8 +90,7 @@ func (p *AnthropicProvider) Completion(ctx context.Context, req CompletionReques
 			return nil, err
 		}
 
-		var apiResp anthropicResponse
-
+		var apiResp xaiResponse
 		if err := json.Unmarshal(resp, &apiResp); err != nil {
 			if len(results) > 0 {
 				break
@@ -115,9 +98,10 @@ func (p *AnthropicProvider) Completion(ctx context.Context, req CompletionReques
 			return nil, fmt.Errorf("parse response: %w", err)
 		}
 
-		for _, content := range apiResp.Content {
-			if content.Type == "text" && content.Text != "" {
-				results = append(results, strings.TrimPrefix(content.Text, "CODE:"))
+		for _, choice := range apiResp.Choices {
+			if choice.Message.Content != "" {
+				content := strings.TrimPrefix(choice.Message.Content, "CODE:")
+				results = append(results, content)
 			}
 		}
 	}
@@ -125,59 +109,47 @@ func (p *AnthropicProvider) Completion(ctx context.Context, req CompletionReques
 	return util.UniqueStrings(results), nil
 }
 
-func (p *AnthropicProvider) Chat(ctx context.Context, query, content, filepath, languageID string) (*ChatResponse, error) {
+func (p *XAIProvider) Chat(ctx context.Context, query, content, filepath, languageID string) (*ChatResponse, error) {
 	cleanFilepath := strings.TrimPrefix(filepath, "file://")
 
 	systemPrompt := BuildChatSystemPrompt(languageID)
 	userContent := BuildChatUserPrompt(languageID, cleanFilepath, content, query)
 
-	apiReq := anthropicRequest{
+	apiReq := xaiRequest{
 		Model:     p.chatModel,
 		MaxTokens: 8192,
-		System: []anthropicSystemContent{
-			{
-				Type: "text",
-				Text: systemPrompt,
-			},
-		},
-		Temperature: 0.1,
-		Messages: []anthropicMessage{
+		Messages: []xaiMessage{
+			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userContent},
 		},
+		Temperature: 0.1,
 	}
 
 	jsonReq, _ := json.MarshalIndent(apiReq, "", "  ")
-	p.logger.Log("DEBUG [Anthropic Chat]: Request:", string(jsonReq))
+	p.logger.Log("DEBUG [XAI Chat]: Request:", string(jsonReq))
 
-	resp, err := p.doRequest(ctx, "/v1/messages", apiReq)
+	resp, err := p.doRequest(ctx, "/v1/chat/completions", apiReq)
 	if err != nil {
 		return nil, err
 	}
 
-	p.logger.Log("DEBUG [Anthropic Chat]: Raw response:", string(resp))
+	p.logger.Log("DEBUG [XAI Chat]: Raw response:", string(resp))
 
-	var apiResp anthropicResponse
+	var apiResp xaiResponse
 	if err := json.Unmarshal(resp, &apiResp); err != nil {
 		return nil, fmt.Errorf("parse response: %w", err)
 	}
 
-	if len(apiResp.Content) == 0 {
+	if len(apiResp.Choices) == 0 || apiResp.Choices[0].Message.Content == "" {
 		return nil, fmt.Errorf("no completion found")
 	}
 
-	var resultText string
-	for _, content := range apiResp.Content {
-		if content.Type == "text" {
-			resultText = content.Text
-			break
-		}
-	}
-
-	p.logger.Log("DEBUG [Anthropic Chat]: Extracted text:", resultText)
-	return &ChatResponse{Result: resultText}, nil
+	text := apiResp.Choices[0].Message.Content
+	p.logger.Log("DEBUG [XAI Chat]: Extracted text:", text)
+	return &ChatResponse{Result: text}, nil
 }
 
-func (p *AnthropicProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
+func (p *XAIProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
@@ -193,8 +165,7 @@ func (p *AnthropicProvider) doRequest(ctx context.Context, endpoint string, body
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", p.apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("Authorization", "Bearer "+p.apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

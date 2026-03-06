@@ -17,6 +17,10 @@ type Config struct {
 	AnthropicModel         string
 	AnthropicModelForChat  string
 	AnthropicEndpoint      string
+	XAIKey                 string
+	XAIModel               string
+	XAIModelForChat        string
+	XAIEndpoint            string
 	Debounce               int
 	TriggerCharacters      []string
 	NumSuggestions         int
@@ -38,6 +42,9 @@ func DefaultConfig() *Config {
 		AnthropicModel:         "claude-haiku-4-5",
 		AnthropicModelForChat:  "claude-sonnet-4-5",
 		AnthropicEndpoint:      "https://api.anthropic.com",
+		XAIModel:               "grok-4-1-fast-non-reasoning",
+		XAIModelForChat:        "grok-4-1-fast-non-reasoning",
+		XAIEndpoint:            "https://api.x.ai",
 		Debounce:               200,
 		TriggerCharacters:      []string{"{", "(", " "},
 		NumSuggestions:         1,
@@ -54,15 +61,19 @@ func Load() *Config {
 	cfg := DefaultConfig()
 
 	// Define flags
-	handler := flag.String("handler", getEnvOrDefault("HANDLER", cfg.Handler), "Provider: openai or anthropic")
+	handler := flag.String("handler", getEnvOrDefault("HANDLER", cfg.Handler), "Provider: openai, anthropic or xai")
 	openaiKey := flag.String("openai-key", getEnvOrDefault("OPENAI_API_KEY", ""), "OpenAI API key")
 	openaiModel := flag.String("openai-model", getEnvOrDefault("OPENAI_MODEL", cfg.OpenAIModel), "OpenAI model")
 	openaiEndpoint := flag.String("openai-endpoint", getEnvOrDefault("OPENAI_ENDPOINT", cfg.OpenAIEndpoint), "OpenAI API endpoint")
 	anthropicKey := flag.String("anthropic-key", getEnvOrDefault("ANTHROPIC_API_KEY", ""), "Anthropic API key")
 	anthropicModel := flag.String("anthropic-model", getEnvOrDefault("ANTHROPIC_MODEL", cfg.AnthropicModel), "Anthropic model")
 	anthropicEndpoint := flag.String("anthropic-endpoint", getEnvOrDefault("ANTHROPIC_ENDPOINT", cfg.AnthropicEndpoint), "Anthropic API endpoint")
+	xaiKey := flag.String("xai-key", getEnvOrDefault("XAI_API_KEY", ""), "xAI API key")
+	xaiModel := flag.String("xai-model", getEnvOrDefault("XAI_MODEL", cfg.XAIModel), "xAI model")
+	xaiEndpoint := flag.String("xai-endpoint", getEnvOrDefault("XAI_ENDPOINT", cfg.XAIEndpoint), "xAI API endpoint")
 	openaiModelForChat := flag.String("openai-model-for-chat", getEnvOrDefault("OPENAI_MODEL_FOR_CHAT", cfg.OpenAIModelForChat), "OpenAI model for chat actions (defaults to openai-model)")
 	anthropicModelForChat := flag.String("anthropic-model-for-chat", getEnvOrDefault("ANTHROPIC_MODEL_FOR_CHAT", cfg.AnthropicModelForChat), "Anthropic model for chat actions (defaults to anthropic-model)")
+	xaiModelForChat := flag.String("xai-model-for-chat", getEnvOrDefault("XAI_MODEL_FOR_CHAT", cfg.XAIModelForChat), "xAI model for chat actions (defaults to xai-model)")
 	debounce := flag.Int("debounce", getEnvOrDefaultInt("DEBOUNCE", cfg.Debounce), "Debounce delay (ms)")
 	triggerChars := flag.String("trigger-chars", getEnvOrDefault("TRIGGER_CHARACTERS", "{||(|| "), "Completion trigger characters (separated by ||)")
 	numSuggestions := flag.Int("num-suggestions", getEnvOrDefaultInt("NUM_SUGGESTIONS", cfg.NumSuggestions), "Number of suggestions")
@@ -85,6 +96,10 @@ func Load() *Config {
 	cfg.AnthropicModel = *anthropicModel
 	cfg.AnthropicModelForChat = *anthropicModelForChat
 	cfg.AnthropicEndpoint = *anthropicEndpoint
+	cfg.XAIKey = *xaiKey
+	cfg.XAIModel = *xaiModel
+	cfg.XAIModelForChat = *xaiModelForChat
+	cfg.XAIEndpoint = *xaiEndpoint
 	cfg.Debounce = *debounce
 	cfg.TriggerCharacters = strings.Split(*triggerChars, "||")
 	cfg.NumSuggestions = *numSuggestions
@@ -100,8 +115,8 @@ func Load() *Config {
 }
 
 func (c *Config) Validate() error {
-	if c.Handler != "openai" && c.Handler != "anthropic" {
-		return &ConfigError{Message: "handler must be 'openai' or 'anthropic'"}
+	if c.Handler != "openai" && c.Handler != "anthropic" && c.Handler != "xai" {
+		return &ConfigError{Message: "handler must be 'openai', 'anthropic' or 'xai'"}
 	}
 
 	if c.Handler == "openai" && c.OpenAIKey == "" {
@@ -112,8 +127,13 @@ func (c *Config) Validate() error {
 		return &ConfigError{Message: "Anthropic API key is required when using anthropic handler"}
 	}
 
+	if c.Handler == "xai" && c.XAIKey == "" {
+		return &ConfigError{Message: "xAI API key is required when using xai handler"}
+	}
+
 	return nil
 }
+
 
 type ConfigError struct {
 	Message string

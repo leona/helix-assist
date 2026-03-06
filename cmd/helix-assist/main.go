@@ -62,6 +62,23 @@ func main() {
 		logger.Log("Registered Anthropic provider", "completion model:", cfg.AnthropicModel, "chat model:", chatModel)
 	}
 
+	if cfg.XAIKey != "" {
+		xaiProvider := providers.NewXAIProvider(
+			cfg.XAIKey,
+			cfg.XAIModel,
+			cfg.XAIModelForChat,
+			cfg.XAIEndpoint,
+			cfg.FetchTimeout,
+			logger,
+		)
+		registry.Register("xai", xaiProvider)
+		chatModel := cfg.XAIModelForChat
+		if chatModel == "" {
+			chatModel = cfg.XAIModel
+		}
+		logger.Log("Registered xAI provider", "completion model:", cfg.XAIModel, "chat model:", chatModel)
+	}
+
 	if err := registry.SetCurrent(cfg.Handler); err != nil {
 		fmt.Fprintf(os.Stderr, "Provider error: %s\n", err.Error())
 		os.Exit(1)

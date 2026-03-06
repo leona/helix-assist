@@ -12,6 +12,7 @@ Rules:
 - Do NOT repeat existing code
 - Do NOT include comments
 - Generate syntactically correct %s code that fits seamlessly between the before and after content
+- Your output MUST start with CODE:<newline> (followed by the newline)
 
 Context awareness:
 - CAREFULLY examine the code after the cursor - it shows what already exists
