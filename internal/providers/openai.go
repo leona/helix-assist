@@ -124,7 +124,7 @@ func (p *OpenAIProvider) Completion(ctx context.Context, req CompletionRequest, 
 			if output.Type == "message" {
 				for _, content := range output.Content {
 					if content.Type == "output_text" && content.Text != "" {
-						results = append(results, content.Text)
+						results = append(results, strings.TrimPrefix(content.Text, "CODE:"))
 					}
 				}
 			}
