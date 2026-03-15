@@ -7,6 +7,7 @@ func BuildCompletionSystemPrompt(languageID string) string {
 
 Rules:
 - Output ONLY the code that should be inserted at the cursor position
+- CRITICAL: Do NOT wrap your response in Markdown code blocks. Do not use backticks (`+"```"+`). Do not include any conversational filler, explanations, or text outside of the raw code.
 - Do NOT include any code that already exists before or after the cursor
 - Do NOT add explanations, comments, or markdown formatting
 - Do NOT repeat existing code
@@ -45,6 +46,7 @@ func BuildChatSystemPrompt(languageID string) string {
 
 Rules:
 - Output ONLY the corrected/improved code that should replace the selection
+- CRITICAL: Do NOT wrap your response in Markdown code blocks. Do not use backticks (`+"```"+`). Do not include any conversational filler, explanations, or text outside of the raw code.
 - DO NOT include explanations, markdown formatting, or code block delimiters
 - DO NOT include any text before or after the code
 - DO NOT add extra comments unless specifically requested

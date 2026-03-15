@@ -16,7 +16,7 @@ import (
 func main() {
 	testDir := flag.String("testdir", "", "Directory containing test files")
 	testFile := flag.String("file", "", "Single test file to run")
-	provider := flag.String("provider", "openai", "Provider to use (openai or anthropic)")
+	provider := flag.String("provider", "openai", "Provider to use (openai, anthropic, or ollama)")
 	language := flag.String("language", "", "Filter tests by language (optional)")
 	numSuggestions := flag.Int("num-suggestions", 1, "Number of completions to request")
 	timeoutMs := flag.Int("timeout", 15000, "Completion timeout in milliseconds")
@@ -24,11 +24,18 @@ func main() {
 
 	openaiKey := flag.String("openai-key", os.Getenv("OPENAI_API_KEY"), "OpenAI API key")
 	openaiModel := flag.String("openai-model", getEnvOrDefault("OPENAI_MODEL", "gpt-4.1-mini"), "OpenAI model")
+	openaiModelForChat := flag.String("openai-model-for-chat", getEnvOrDefault("OPENAI_MODEL_FOR_CHAT", ""), "OpenAI chat model")
 	openaiEndpoint := flag.String("openai-endpoint", getEnvOrDefault("OPENAI_ENDPOINT", "https://api.openai.com/v1"), "OpenAI API endpoint")
 
 	anthropicKey := flag.String("anthropic-key", os.Getenv("ANTHROPIC_API_KEY"), "Anthropic API key")
 	anthropicModel := flag.String("anthropic-model", getEnvOrDefault("ANTHROPIC_MODEL", "claude-sonnet-4-5"), "Anthropic model")
+	anthropicModelForChat := flag.String("anthropic-model-for-chat", getEnvOrDefault("ANTHROPIC_MODEL_FOR_CHAT", ""), "Anthropic chat model")
 	anthropicEndpoint := flag.String("anthropic-endpoint", getEnvOrDefault("ANTHROPIC_ENDPOINT", "https://api.anthropic.com"), "Anthropic API endpoint")
+
+	ollamaEndpoint := flag.String("ollama-endpoint", getEnvOrDefault("OLLAMA_ENDPOINT", "http://localhost:11434"), "Ollama API endpoint")
+	ollamaModel := flag.String("ollama-model", getEnvOrDefault("OLLAMA_MODEL", "qwen2.5-coder"), "Ollama model")
+	ollamaModelForChat := flag.String("ollama-model-for-chat", getEnvOrDefault("OLLAMA_MODEL_FOR_CHAT", "qwen2.5-coder"), "Ollama chat model")
+	ollamaDisableFIM := flag.Bool("ollama-disable-fim", false, "Disable FIM")
 
 	flag.Parse()
 
@@ -44,8 +51,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *provider != "openai" && *provider != "anthropic" {
-		fmt.Fprintf(os.Stderr, "Error: Provider must be 'openai' or 'anthropic'\n")
+	if *provider != "openai" && *provider != "anthropic" && *provider != "ollama" {
+		fmt.Fprintf(os.Stderr, "Error: Provider must be 'openai', 'anthropic', or 'ollama'\n")
 		os.Exit(1)
 	}
 
@@ -62,6 +69,7 @@ func main() {
 		openaiProvider := providers.NewOpenAIProvider(
 			*openaiKey,
 			*openaiModel,
+			*openaiModelForChat,
 			*openaiEndpoint,
 			*timeoutMs,
 			logger,
@@ -79,12 +87,27 @@ func main() {
 		anthropicProvider := providers.NewAnthropicProvider(
 			*anthropicKey,
 			*anthropicModel,
+			*anthropicModelForChat,
 			*anthropicEndpoint,
 			*timeoutMs,
 			logger,
 		)
 		registry.Register("anthropic", anthropicProvider)
 		if err := registry.SetCurrent("anthropic"); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	} else if *provider == "ollama" {
+		ollamaProvider := providers.NewOllamaProvider(
+			*ollamaModel,
+			*ollamaModelForChat,
+			*ollamaEndpoint,
+			*ollamaDisableFIM,
+			*timeoutMs,
+			logger,
+		)
+		registry.Register("ollama", ollamaProvider)
+		if err := registry.SetCurrent("ollama"); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

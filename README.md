@@ -27,6 +27,7 @@ A Go port of the [helix-gpt](https://github.com/leona/helix-gpt) language server
 
 - **OpenAI** (default)
 - **Anthropic**
+- **Ollama** (local models with FIM support)
 
 ## Installation
 
@@ -76,8 +77,12 @@ Add to `~/.config/helix/languages.toml`:
 ```toml
 [language-server.helix-assist]
 command = "helix-assist"
-# Optional
-args = ["--handler", "anthropic", "--num-suggestions", "2"]
+# Example 1: Anthropic
+# args = ["--handler", "anthropic", "--num-suggestions", "2"]
+# Example 2: Local Ollama (Qwen2.5-Coder)
+# args = ["--handler", "ollama", "--ollama-model", "qwen2.5-coder:7b"]
+# Disable FIM mode
+# args = ["--handler", "ollama", "--ollama-model", "qwen2.5-coder:7b", "--ollama-disable-fim"]
 
 [[language]]
 name = "go"
@@ -104,13 +109,17 @@ language-servers = ["pylsp", "helix-assist"]
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HANDLER` | `openai` | Provider: `openai` or `anthropic` |
+| `HANDLER` | `openai` | Provider: `openai`, `anthropic`, or `ollama` |
 | `OPENAI_API_KEY` | - | OpenAI API key |
 | `OPENAI_MODEL` | `gpt-4.1-mini` | OpenAI model for completions |
 | `OPENAI_ENDPOINT` | `https://api.openai.com/v1` | OpenAI API endpoint |
 | `ANTHROPIC_API_KEY` | - | Anthropic API key |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Anthropic model |
 | `ANTHROPIC_ENDPOINT` | `https://api.anthropic.com` | Anthropic API endpoint |
+| `OLLAMA_ENDPOINT` | `http://localhost:11434` | Ollama API endpoint |
+| `OLLAMA_MODEL` | `qwen2.5-coder` | Ollama model for completions |
+| `OLLAMA_MODEL_FOR_CHAT` | `qwen2.5-coder` | Ollama model for chat actions |
+| `OLLAMA_DISABLE_FIM` | `false` | Disable FIM mode for completions |
 | `DEBOUNCE` | `200` | Debounce delay in milliseconds |
 | `TRIGGER_CHARACTERS` | `{`\|\|`(`\|\|` ` | Completion triggers (separated by `\|\|`) |
 | `NUM_SUGGESTIONS` | `1` | Number of completion suggestions |
