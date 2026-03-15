@@ -62,6 +62,23 @@ func main() {
 		logger.Log("Registered Anthropic provider", "completion model:", cfg.AnthropicModel, "chat model:", chatModel)
 	}
 
+	if cfg.OllamaModel != "" || cfg.Handler == "ollama" {
+		ollamaProvider := providers.NewOllamaProvider(
+			cfg.OllamaModel,
+			cfg.OllamaModelForChat,
+			cfg.OllamaEndpoint,
+			cfg.OllamaDisableFIM,
+			cfg.FetchTimeout,
+			logger,
+		)
+		registry.Register("ollama", ollamaProvider)
+		chatModel := cfg.OllamaModelForChat
+		if chatModel == "" {
+			chatModel = cfg.OllamaModel
+		}
+		logger.Log("Registered Ollama provider", "completion model:", cfg.OllamaModel, "chat model:", chatModel)
+	}
+
 	if err := registry.SetCurrent(cfg.Handler); err != nil {
 		fmt.Fprintf(os.Stderr, "Provider error: %s\n", err.Error())
 		os.Exit(1)
