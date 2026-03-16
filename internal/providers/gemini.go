@@ -1,9 +1,12 @@
 package providers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -34,15 +37,6 @@ func NewGeminiProvider(apiKey, model, chatModel, endpoint string, timeoutMs int,
 		logger:    logger,
 	}
 }
-
-// let mut contents: Vec<_> = history
-//     .into_iter()
-//     .map(|msg| content_builder(&msg.role, &msg.content))
-//     .collect();
-// contents.push(content_builder("user", &prompt));
-// let request_body = serde_json::json!({"contents": contents});
-// let response: serializer::Response = http::post(&url, request_body, None).await?;
-//
 
 type GeminiPart struct {
 	Text string
@@ -81,7 +75,7 @@ func (p *GeminiProvider) Completion(ctx context.Context, req CompletionRequest, 
 			},
 		}
 
-		resp, err := p.doRequest(ctx, "", apiReq) // TODO: add endpoint on this
+		resp, err := p.doRequest(ctx, "/v1beta/models", apiReq)
 
 		if err != nil {
 			if len(results) > 0 {
@@ -111,5 +105,34 @@ func (p *GeminiProvider) Completion(ctx context.Context, req CompletionRequest, 
 }
 
 func (p *GeminiProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
-	return nil, nil
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("marshal request: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, p.timeout)
+	defer cancel()
+
+	url := p.endpoint + endpoint + p.model + ":generateContent?key" + p.apiKey
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return respBody, nil
 }
