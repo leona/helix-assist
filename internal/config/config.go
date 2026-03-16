@@ -17,6 +17,7 @@ type Config struct {
 	AnthropicModel         string
 	AnthropicModelForChat  string
 	AnthropicEndpoint      string
+	GeminiEndpoint         string
 	Debounce               int
 	TriggerCharacters      []string
 	NumSuggestions         int
@@ -38,6 +39,7 @@ func DefaultConfig() *Config {
 		AnthropicModel:         "claude-haiku-4-5",
 		AnthropicModelForChat:  "claude-sonnet-4-5",
 		AnthropicEndpoint:      "https://api.anthropic.com",
+		GeminiEndpoint:         "https://generativelanguage.googleapis.com",
 		Debounce:               200,
 		TriggerCharacters:      []string{"{", "(", " "},
 		NumSuggestions:         1,
