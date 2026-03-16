@@ -39,26 +39,26 @@ func NewGeminiProvider(apiKey, model, chatModel, endpoint string, timeoutMs int,
 }
 
 type GeminiPart struct {
-	Text string
+	Text string `json:"text"`
 }
 
 type GeminiContent struct {
-	Role  string
-	Parts GeminiPart
+	Role  string     `json:"role"`
+	Parts GeminiPart `json:"parts"`
 }
 
 type GeminiRequest struct {
-	Contents []GeminiContent
+	Contents []GeminiContent `json:"contents"`
 }
 
 type GeminiCandidate struct {
 	Contents struct {
-		Parts []GeminiPart
-	}
+		Parts []GeminiPart `json:"parts"`
+	} `json:"contents"`
 }
 
 type GeminiResponse struct {
-	Candidates []GeminiCandidate
+	Candidates []GeminiCandidate `json:"candidates"`
 }
 
 func (p *GeminiProvider) Completion(ctx context.Context, req CompletionRequest, filepath, languageID string, numSuggestions int) ([]string, error) {
