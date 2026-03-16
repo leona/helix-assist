@@ -80,7 +80,7 @@ func (p *AnthropicProvider) Completion(ctx context.Context, req CompletionReques
 
 	results := make([]string, 0, numSuggestions)
 
-	for i := 0; i < numSuggestions; i++ {
+	for range numSuggestions {
 		apiReq := anthropicRequest{
 			Model:     p.model,
 			MaxTokens: 256,
