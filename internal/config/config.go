@@ -20,6 +20,7 @@ type Config struct {
 	GeminiEndpoint         string
 	GeminiKey              string
 	GeminiModel            string
+	GeminiModelForChat     string
 	Debounce               int
 	TriggerCharacters      []string
 	NumSuggestions         int
@@ -42,7 +43,8 @@ func DefaultConfig() *Config {
 		AnthropicModelForChat:  "claude-sonnet-4-5",
 		AnthropicEndpoint:      "https://api.anthropic.com",
 		GeminiEndpoint:         "https://generativelanguage.googleapis.com",
-		GeminiModel:            "gemini-2.5-pro",
+		GeminiModel:            "gemini-2.5-flash",
+		GeminiModelForChat:     "gemini-3.0-pro",
 		Debounce:               200,
 		TriggerCharacters:      []string{"{", "(", " "},
 		NumSuggestions:         1,
@@ -70,6 +72,7 @@ func Load() *Config {
 	anthropicModelForChat := flag.String("anthropic-model-for-chat", getEnvOrDefault("ANTHROPIC_MODEL_FOR_CHAT", cfg.AnthropicModelForChat), "Anthropic model for chat actions (defaults to anthropic-model)")
 	geminiEndpoint := flag.String("gemini-endpoint", getEnvOrDefault("GEMINI_ENDPOINT", cfg.GeminiEndpoint), "Gemini API endpoint")
 	geminiKey := flag.String("gemini-key", getEnvOrDefault("GEMINI_KEY", cfg.GeminiModel), "Gemini API key")
+	geminiModelForChat := flag.String("gemini-model-for-chat", getEnvOrDefault("GEMINI_MODEL", cfg.GeminiModelForChat), "Gemini model for chat")
 	geminiModel := flag.String("gemini-model", getEnvOrDefault("GEMINI_MODEL", cfg.GeminiModel), "Gemini model")
 	debounce := flag.Int("debounce", getEnvOrDefaultInt("DEBOUNCE", cfg.Debounce), "Debounce delay (ms)")
 	triggerChars := flag.String("trigger-chars", getEnvOrDefault("TRIGGER_CHARACTERS", "{||(|| "), "Completion trigger characters (separated by ||)")
@@ -96,6 +99,7 @@ func Load() *Config {
 	cfg.GeminiEndpoint = *geminiEndpoint
 	cfg.GeminiKey = *geminiKey
 	cfg.GeminiModel = *geminiModel
+	cfg.GeminiModelForChat = *geminiModelForChat
 	cfg.Debounce = *debounce
 	cfg.TriggerCharacters = strings.Split(*triggerChars, "||")
 	cfg.NumSuggestions = *numSuggestions

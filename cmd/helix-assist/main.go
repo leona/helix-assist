@@ -66,13 +66,17 @@ func main() {
 		geminiProvider := providers.NewGeminiProvider(
 			cfg.GeminiKey,
 			cfg.GeminiModel,
-			"chatmodel", // TODO: fix that or remove it
+			cfg.GeminiModelForChat,
 			cfg.GeminiEndpoint,
 			cfg.FetchTimeout,
 			logger,
 		)
 		registry.Register("gemini", geminiProvider)
-		// TODO: continue this
+		chatModel := cfg.GeminiModelForChat
+		if chatModel == "" {
+			chatModel = cfg.GeminiModel
+		}
+		logger.Log("Registered Gemini provider", "completion model:", cfg.GeminiModel, "chat model:", chatModel)
 	}
 
 	if err := registry.SetCurrent(cfg.Handler); err != nil {
