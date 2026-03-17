@@ -115,7 +115,7 @@ func Load() *Config {
 }
 
 func (c *Config) Validate() error {
-	if c.Handler != "openai" && c.Handler != "anthropic" {
+	if c.Handler != "openai" && c.Handler != "anthropic" && c.Handler != "gemini" {
 		return &ConfigError{Message: "handler must be 'openai' or 'anthropic'"}
 	}
 
@@ -125,6 +125,10 @@ func (c *Config) Validate() error {
 
 	if c.Handler == "anthropic" && c.AnthropicKey == "" {
 		return &ConfigError{Message: "Anthropic API key is required when using anthropic handler"}
+	}
+
+	if c.Handler == "gemini" && c.GeminiKey == "" {
+		return &ConfigError{Message: "Gemini API key is required when using gemini handler"}
 	}
 
 	return nil
