@@ -38,27 +38,27 @@ func NewGeminiProvider(apiKey, model, chatModel, endpoint string, timeoutMs int,
 	}
 }
 
-type GeminiPart struct {
+type geminiPart struct {
 	Text string `json:"text"`
 }
 
 type GeminiContent struct {
 	Role  string     `json:"role"`
-	Parts GeminiPart `json:"parts"`
+	Parts geminiPart `json:"parts"`
 }
 
 type geminiRequest struct {
 	Contents []GeminiContent `json:"contents"`
 }
 
-type GeminiCandidate struct {
+type geminiCandidate struct {
 	Contents struct {
-		Parts []GeminiPart `json:"parts"`
+		Parts []geminiPart `json:"parts"`
 	} `json:"contents"`
 }
 
 type geminiResponse struct {
-	Candidates []GeminiCandidate `json:"candidates"`
+	Candidates []geminiCandidate `json:"candidates"`
 }
 
 func (p *GeminiProvider) Completion(ctx context.Context, req CompletionRequest, filepath, languageID string, numSuggestions int) ([]string, error) {
@@ -70,8 +70,8 @@ func (p *GeminiProvider) Completion(ctx context.Context, req CompletionRequest, 
 	for range numSuggestions {
 		apiReq := geminiRequest{
 			Contents: []GeminiContent{
-				{Role: "model", Parts: GeminiPart{Text: systemPrompt}},
-				{Role: "user", Parts: GeminiPart{Text: userPrompt}},
+				{Role: "model", Parts: geminiPart{Text: systemPrompt}},
+				{Role: "user", Parts: geminiPart{Text: userPrompt}},
 			},
 		}
 
@@ -148,8 +148,8 @@ func (p *GeminiProvider) Chat(ctx context.Context, query, content, filepath, lan
 
 	apiReq := geminiRequest{
 		Contents: []GeminiContent{
-			{Role: "model", Parts: GeminiPart{Text: systemPrompt}},
-			{Role: "user", Parts: GeminiPart{Text: userContent}},
+			{Role: "model", Parts: geminiPart{Text: systemPrompt}},
+			{Role: "user", Parts: geminiPart{Text: userContent}},
 		},
 	}
 
