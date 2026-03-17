@@ -31,7 +31,7 @@ func main() {
 	anthropicEndpoint := flag.String("anthropic-endpoint", getEnvOrDefault("ANTHROPIC_ENDPOINT", "https://api.anthropic.com"), "Anthropic API endpoint")
 
 	geminiEndpoint := flag.String("gemini-endpoint", getEnvOrDefault("GEMINI_ENDPOINT", "https://generativelanguage.googleapis.com"), "Gemini API endpoint")
-	geminiKey := flag.String("gemini-key", os.Getenv("GEMINI_KEY"), "Gemini API key")
+	geminiKey := flag.String("gemini-key", os.Getenv("GEMINI_API_KEY"), "Gemini API key")
 	geminiModel := flag.String("gemini-model", getEnvOrDefault("GEMINI_MODEL", "gemini-1.5-flash"), "Gemini model")
 
 	flag.Parse()
