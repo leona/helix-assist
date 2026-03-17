@@ -42,19 +42,29 @@ type geminiPart struct {
 	Text string `json:"text"`
 }
 
-type GeminiContent struct {
-	Role  string     `json:"role"`
-	Parts geminiPart `json:"parts"`
+type geminiSystemContent struct {
+	Parts []geminiPart `json:"parts"`
+}
+
+type geminiContent struct {
+	Role  string       `json:"role"`
+	Parts []geminiPart `json:"parts"`
+}
+
+type geminiGenerationConfig struct {
+	Temperature float64 `json:"temperature"`
 }
 
 type geminiRequest struct {
-	Contents []GeminiContent `json:"contents"`
+	SystemInstruction geminiSystemContent    `json:"system_instruction"`
+	Contents          []geminiContent        `json:"contents"`
+	GenerationConfig  geminiGenerationConfig `json:"generationConfig"`
 }
 
 type geminiCandidate struct {
-	Contents struct {
+	Content struct {
 		Parts []geminiPart `json:"parts"`
-	} `json:"contents"`
+	} `json:"content"`
 }
 
 type geminiResponse struct {
@@ -65,13 +75,31 @@ func (p *GeminiProvider) Completion(ctx context.Context, req CompletionRequest, 
 	systemPrompt := BuildCompletionSystemPrompt(languageID)
 	userPrompt := BuildCompletionUserPrompt(filepath, req.ContentBefore, req.ContentAfter)
 
+	temperature := 0.0
+
+	if numSuggestions > 1 {
+		temperature = 0.4
+	}
+
 	results := make([]string, 0, numSuggestions)
 
 	for range numSuggestions {
 		apiReq := geminiRequest{
-			Contents: []GeminiContent{
-				{Role: "model", Parts: geminiPart{Text: systemPrompt}},
-				{Role: "user", Parts: geminiPart{Text: userPrompt}},
+			SystemInstruction: geminiSystemContent{
+				Parts: []geminiPart{
+					{Text: systemPrompt},
+				},
+			},
+			Contents: []geminiContent{
+				{
+					Role: "user",
+					Parts: []geminiPart{
+						{Text: userPrompt},
+					},
+				},
+			},
+			GenerationConfig: geminiGenerationConfig{
+				Temperature: temperature,
 			},
 		}
 
@@ -95,13 +123,73 @@ func (p *GeminiProvider) Completion(ctx context.Context, req CompletionRequest, 
 		}
 
 		for _, candidate := range apiResp.Candidates {
-			for _, part := range candidate.Contents.Parts {
-				results = append(results, part.Text)
+			for _, part := range candidate.Content.Parts {
+				if part.Text != "" {
+					results = append(results, part.Text)
+				}
 			}
 		}
 
 	}
 	return util.UniqueStrings(results), nil
+}
+
+func (p *GeminiProvider) Chat(ctx context.Context, query, content, filepath, languageID string) (*ChatResponse, error) {
+	cleanFilePath := strings.TrimPrefix(filepath, "file://")
+
+	systemPrompt := BuildChatSystemPrompt(languageID)
+	userContent := BuildChatUserPrompt(languageID, cleanFilePath, content, query)
+
+	apiReq := geminiRequest{
+		SystemInstruction: geminiSystemContent{
+			Parts: []geminiPart{
+				{Text: systemPrompt},
+			},
+		},
+		Contents: []geminiContent{
+			{
+				Role: "user",
+				Parts: []geminiPart{
+					{Text: userContent},
+				},
+			},
+		},
+		GenerationConfig: geminiGenerationConfig{
+			Temperature: 0.1,
+		},
+	}
+
+	jsonReq, _ := json.MarshalIndent(apiReq, "", "  ")
+	p.logger.Log("DEBUG [Gemini Chat]: Request:", string(jsonReq))
+
+	resp, err := p.doRequest(ctx, "/v1beta/models", apiReq)
+	if err != nil {
+		return nil, err
+	}
+
+	p.logger.Log("DEBUG [Gemini Chat]: Raw response:", string(resp))
+
+	var apiResp geminiResponse
+	if err := json.Unmarshal(resp, &apiResp); err != nil {
+		return nil, fmt.Errorf("parse response: %w", err)
+	}
+
+	if len(apiResp.Candidates) == 0 {
+		return nil, fmt.Errorf("no completion found")
+	}
+
+	var resultText string
+	for _, candidate := range apiResp.Candidates {
+		for _, part := range candidate.Content.Parts {
+			if part.Text != "" {
+				resultText = part.Text
+				break
+			}
+		}
+	}
+
+	p.logger.Log("DEBUG [Gemini Chat]: Extracted text:", resultText)
+	return &ChatResponse{Result: resultText}, nil
 }
 
 func (p *GeminiProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
@@ -138,48 +226,4 @@ func (p *GeminiProvider) doRequest(ctx context.Context, endpoint string, body an
 	}
 
 	return respBody, nil
-}
-
-func (p *GeminiProvider) Chat(ctx context.Context, query, content, filepath, languageID string) (*ChatResponse, error) {
-	cleanFilePath := strings.TrimPrefix(filepath, "file://")
-
-	systemPrompt := BuildChatSystemPrompt(languageID)
-	userContent := BuildChatUserPrompt(languageID, cleanFilePath, content, query)
-
-	apiReq := geminiRequest{
-		Contents: []GeminiContent{
-			{Role: "model", Parts: geminiPart{Text: systemPrompt}},
-			{Role: "user", Parts: geminiPart{Text: userContent}},
-		},
-	}
-
-	jsonReq, _ := json.MarshalIndent(apiReq, "", "  ")
-	p.logger.Log("DEBUG [Gemini Chat]: Request:", string(jsonReq))
-
-	resp, err := p.doRequest(ctx, "/v1beta/models", apiReq)
-	if err != nil {
-		return nil, err
-	}
-
-	p.logger.Log("DEBUG [Gemini Chat]: Raw response:", string(resp))
-
-	var apiResp geminiResponse
-	if err := json.Unmarshal(resp, &apiResp); err != nil {
-		return nil, fmt.Errorf("parse response: %w", err)
-	}
-
-	if len(apiResp.Candidates) == 0 {
-		return nil, fmt.Errorf("no completion found")
-	}
-
-	var resultText string
-	for _, candidate := range apiResp.Candidates {
-		for _, part := range candidate.Contents.Parts {
-			resultText = part.Text
-			break
-		}
-	}
-
-	p.logger.Log("DEBUG [Gemini Chat]: Extracted text:", resultText)
-	return &ChatResponse{Result: resultText}, nil
 }
