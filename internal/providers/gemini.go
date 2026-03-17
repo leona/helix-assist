@@ -113,11 +113,14 @@ func (p *GeminiProvider) doRequest(ctx context.Context, endpoint string, body an
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
-	url := p.endpoint + endpoint + p.model + ":generateContent?key" + p.apiKey
+	url := p.endpoint + endpoint + "/" + p.model + ":generateContent"
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", p.apiKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
