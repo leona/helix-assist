@@ -62,6 +62,23 @@ func main() {
 		logger.Log("Registered Anthropic provider", "completion model:", cfg.AnthropicModel, "chat model:", chatModel)
 	}
 
+	if cfg.GeminiKey != "" {
+		geminiProvider := providers.NewGeminiProvider(
+			cfg.GeminiKey,
+			cfg.GeminiModel,
+			cfg.GeminiModelForChat,
+			cfg.GeminiEndpoint,
+			cfg.FetchTimeout,
+			logger,
+		)
+		registry.Register("gemini", geminiProvider)
+		chatModel := cfg.GeminiModelForChat
+		if chatModel == "" {
+			chatModel = cfg.GeminiModel
+		}
+		logger.Log("Registered Gemini provider", "completion model:", cfg.GeminiModel, "chat model:", chatModel)
+	}
+
 	if err := registry.SetCurrent(cfg.Handler); err != nil {
 		fmt.Fprintf(os.Stderr, "Provider error: %s\n", err.Error())
 		os.Exit(1)

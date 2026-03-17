@@ -27,6 +27,7 @@ A Go port of the [helix-gpt](https://github.com/leona/helix-gpt) language server
 
 - **OpenAI** (default)
 - **Anthropic**
+- **Gemini**
 
 ## Installation
 
@@ -111,6 +112,9 @@ language-servers = ["pylsp", "helix-assist"]
 | `ANTHROPIC_API_KEY` | - | Anthropic API key |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Anthropic model |
 | `ANTHROPIC_ENDPOINT` | `https://api.anthropic.com` | Anthropic API endpoint |
+| `GEMINI_ENDPOINT` | `https://generativelanguage.googleapis.com` | Gemini API endpoint |
+| `GEMINI_MODEL` | `gemini-3-flash-preview` | Gemini model |
+| `GEMINI_API_KEY` | - | Gemini API key |
 | `DEBOUNCE` | `200` | Debounce delay in milliseconds |
 | `TRIGGER_CHARACTERS` | `{`\|\|`(`\|\|` ` | Completion triggers (separated by `\|\|`) |
 | `NUM_SUGGESTIONS` | `1` | Number of completion suggestions |

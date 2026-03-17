@@ -30,6 +30,10 @@ func main() {
 	anthropicModel := flag.String("anthropic-model", getEnvOrDefault("ANTHROPIC_MODEL", "claude-sonnet-4-5"), "Anthropic model")
 	anthropicEndpoint := flag.String("anthropic-endpoint", getEnvOrDefault("ANTHROPIC_ENDPOINT", "https://api.anthropic.com"), "Anthropic API endpoint")
 
+	geminiEndpoint := flag.String("gemini-endpoint", getEnvOrDefault("GEMINI_ENDPOINT", "https://generativelanguage.googleapis.com"), "Gemini API endpoint")
+	geminiKey := flag.String("gemini-key", os.Getenv("GEMINI_API_KEY"), "Gemini API key")
+	geminiModel := flag.String("gemini-model", getEnvOrDefault("GEMINI_MODEL", "gemini-1.5-flash"), "Gemini model")
+
 	flag.Parse()
 
 	if *testDir == "" && *testFile == "" {
@@ -44,8 +48,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *provider != "openai" && *provider != "anthropic" {
-		fmt.Fprintf(os.Stderr, "Error: Provider must be 'openai' or 'anthropic'\n")
+	if *provider != "openai" && *provider != "anthropic" && *provider != "gemini" {
+		fmt.Fprintf(os.Stderr, "Error: Provider must be 'openai' or 'anthropic' or 'gemini'\\n")
 		os.Exit(1)
 	}
 
@@ -85,6 +89,23 @@ func main() {
 		)
 		registry.Register("anthropic", anthropicProvider)
 		if err := registry.SetCurrent("anthropic"); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	} else if *provider == "gemini" {
+		if *geminiKey == "" {
+			fmt.Fprintf(os.Stderr, "Error: gemini API key is required. Set gemini_API_KEY or use --gemini-key\n")
+			os.Exit(1)
+		}
+		geminiProvider := providers.NewGeminiProvider(
+			*geminiKey,
+			*geminiModel,
+			*geminiEndpoint,
+			*timeoutMs,
+			logger,
+		)
+		registry.Register("gemini", geminiProvider)
+		if err := registry.SetCurrent("gemini"); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

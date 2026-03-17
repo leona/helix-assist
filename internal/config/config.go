@@ -17,6 +17,10 @@ type Config struct {
 	AnthropicModel         string
 	AnthropicModelForChat  string
 	AnthropicEndpoint      string
+	GeminiEndpoint         string
+	GeminiKey              string
+	GeminiModel            string
+	GeminiModelForChat     string
 	Debounce               int
 	TriggerCharacters      []string
 	NumSuggestions         int
@@ -38,6 +42,9 @@ func DefaultConfig() *Config {
 		AnthropicModel:         "claude-haiku-4-5",
 		AnthropicModelForChat:  "claude-sonnet-4-5",
 		AnthropicEndpoint:      "https://api.anthropic.com",
+		GeminiEndpoint:         "https://generativelanguage.googleapis.com",
+		GeminiModel:            "gemini-3-flash-preview",
+		GeminiModelForChat:     "gemini-3.1-pro-preview",
 		Debounce:               200,
 		TriggerCharacters:      []string{"{", "(", " "},
 		NumSuggestions:         1,
@@ -63,6 +70,10 @@ func Load() *Config {
 	anthropicEndpoint := flag.String("anthropic-endpoint", getEnvOrDefault("ANTHROPIC_ENDPOINT", cfg.AnthropicEndpoint), "Anthropic API endpoint")
 	openaiModelForChat := flag.String("openai-model-for-chat", getEnvOrDefault("OPENAI_MODEL_FOR_CHAT", cfg.OpenAIModelForChat), "OpenAI model for chat actions (defaults to openai-model)")
 	anthropicModelForChat := flag.String("anthropic-model-for-chat", getEnvOrDefault("ANTHROPIC_MODEL_FOR_CHAT", cfg.AnthropicModelForChat), "Anthropic model for chat actions (defaults to anthropic-model)")
+	geminiEndpoint := flag.String("gemini-endpoint", getEnvOrDefault("GEMINI_ENDPOINT", cfg.GeminiEndpoint), "Gemini API endpoint")
+	geminiKey := flag.String("gemini-key", getEnvOrDefault("GEMINI_API_KEY", ""), "Gemini API key")
+	geminiModelForChat := flag.String("gemini-model-for-chat", getEnvOrDefault("GEMINI_MODEL", cfg.GeminiModelForChat), "Gemini model for chat")
+	geminiModel := flag.String("gemini-model", getEnvOrDefault("GEMINI_MODEL", cfg.GeminiModel), "Gemini model")
 	debounce := flag.Int("debounce", getEnvOrDefaultInt("DEBOUNCE", cfg.Debounce), "Debounce delay (ms)")
 	triggerChars := flag.String("trigger-chars", getEnvOrDefault("TRIGGER_CHARACTERS", "{||(|| "), "Completion trigger characters (separated by ||)")
 	numSuggestions := flag.Int("num-suggestions", getEnvOrDefaultInt("NUM_SUGGESTIONS", cfg.NumSuggestions), "Number of suggestions")
@@ -85,6 +96,10 @@ func Load() *Config {
 	cfg.AnthropicModel = *anthropicModel
 	cfg.AnthropicModelForChat = *anthropicModelForChat
 	cfg.AnthropicEndpoint = *anthropicEndpoint
+	cfg.GeminiEndpoint = *geminiEndpoint
+	cfg.GeminiKey = *geminiKey
+	cfg.GeminiModel = *geminiModel
+	cfg.GeminiModelForChat = *geminiModelForChat
 	cfg.Debounce = *debounce
 	cfg.TriggerCharacters = strings.Split(*triggerChars, "||")
 	cfg.NumSuggestions = *numSuggestions
@@ -100,7 +115,7 @@ func Load() *Config {
 }
 
 func (c *Config) Validate() error {
-	if c.Handler != "openai" && c.Handler != "anthropic" {
+	if c.Handler != "openai" && c.Handler != "anthropic" && c.Handler != "gemini" {
 		return &ConfigError{Message: "handler must be 'openai' or 'anthropic'"}
 	}
 
@@ -110,6 +125,10 @@ func (c *Config) Validate() error {
 
 	if c.Handler == "anthropic" && c.AnthropicKey == "" {
 		return &ConfigError{Message: "Anthropic API key is required when using anthropic handler"}
+	}
+
+	if c.Handler == "gemini" && c.GeminiKey == "" {
+		return &ConfigError{Message: "Gemini API key is required when using gemini handler"}
 	}
 
 	return nil
