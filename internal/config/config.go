@@ -43,7 +43,7 @@ func DefaultConfig() *Config {
 		AnthropicModelForChat:  "claude-sonnet-4-5",
 		AnthropicEndpoint:      "https://api.anthropic.com",
 		GeminiEndpoint:         "https://generativelanguage.googleapis.com",
-		GeminiModel:            "gemini-3.1-flash-preview",
+		GeminiModel:            "gemini-3-flash-preview",
 		GeminiModelForChat:     "gemini-3.1-pro-preview",
 		Debounce:               200,
 		TriggerCharacters:      []string{"{", "(", " "},
@@ -71,7 +71,7 @@ func Load() *Config {
 	openaiModelForChat := flag.String("openai-model-for-chat", getEnvOrDefault("OPENAI_MODEL_FOR_CHAT", cfg.OpenAIModelForChat), "OpenAI model for chat actions (defaults to openai-model)")
 	anthropicModelForChat := flag.String("anthropic-model-for-chat", getEnvOrDefault("ANTHROPIC_MODEL_FOR_CHAT", cfg.AnthropicModelForChat), "Anthropic model for chat actions (defaults to anthropic-model)")
 	geminiEndpoint := flag.String("gemini-endpoint", getEnvOrDefault("GEMINI_ENDPOINT", cfg.GeminiEndpoint), "Gemini API endpoint")
-	geminiKey := flag.String("gemini-key", getEnvOrDefault("GEMINI_KEY", cfg.GeminiModel), "Gemini API key")
+	geminiKey := flag.String("gemini-key", getEnvOrDefault("GEMINI_KEY", ""), "Gemini API key")
 	geminiModelForChat := flag.String("gemini-model-for-chat", getEnvOrDefault("GEMINI_MODEL", cfg.GeminiModelForChat), "Gemini model for chat")
 	geminiModel := flag.String("gemini-model", getEnvOrDefault("GEMINI_MODEL", cfg.GeminiModel), "Gemini model")
 	debounce := flag.Int("debounce", getEnvOrDefaultInt("DEBOUNCE", cfg.Debounce), "Debounce delay (ms)")
