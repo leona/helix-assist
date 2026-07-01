@@ -8,44 +8,46 @@ import (
 )
 
 type Config struct {
-	Handler                string
-	OpenAIKey              string
-	OpenAIModel            string
-	OpenAIModelForChat     string
-	OpenAIEndpoint         string
-	AnthropicKey           string
-	AnthropicModel         string
-	AnthropicModelForChat  string
-	AnthropicEndpoint      string
-	Debounce               int
-	TriggerCharacters      []string
-	NumSuggestions         int
-	LogFile                string
-	FetchTimeout           int
-	ActionTimeout          int
-	CompletionTimeout      int
-	DebugQuery             string
-	EnableProgressSpinner  bool
-	ProgressUpdateInterval int
+	Handler                  string
+	OpenAIKey                string
+	OpenAIModel              string
+	OpenAIModelForChat       string
+	OpenAIEndpoint           string
+	AnthropicKey             string
+	AnthropicModel           string
+	AnthropicModelForChat    string
+	AnthropicEndpoint        string
+	Debounce                 int
+	TriggerCharacters        []string
+	NumSuggestions           int
+	LogFile                  string
+	FetchTimeout             int
+	ActionTimeout            int
+	CompletionTimeout        int
+	DebugQuery               string
+	EnableProgressSpinner    bool
+	EnableCompletionProvider bool
+	ProgressUpdateInterval   int
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		Handler:                "openai",
-		OpenAIModel:            "gpt-4.1",
-		OpenAIModelForChat:     "gpt-5",
-		OpenAIEndpoint:         "https://api.openai.com/v1",
-		AnthropicModel:         "claude-haiku-4-5",
-		AnthropicModelForChat:  "claude-sonnet-4-5",
-		AnthropicEndpoint:      "https://api.anthropic.com",
-		Debounce:               200,
-		TriggerCharacters:      []string{"{", "(", " "},
-		NumSuggestions:         1,
-		FetchTimeout:           15000,
-		ActionTimeout:          15000,
-		CompletionTimeout:      15000,
-		EnableProgressSpinner:  true,
-		ProgressUpdateInterval: 200,
+		Handler:                  "openai",
+		OpenAIModel:              "gpt-4.1",
+		OpenAIModelForChat:       "gpt-5",
+		OpenAIEndpoint:           "https://api.openai.com/v1",
+		AnthropicModel:           "claude-haiku-4-5",
+		AnthropicModelForChat:    "claude-sonnet-4-5",
+		AnthropicEndpoint:        "https://api.anthropic.com",
+		Debounce:                 200,
+		TriggerCharacters:        []string{"{", "(", " "},
+		NumSuggestions:           1,
+		FetchTimeout:             15000,
+		ActionTimeout:            15000,
+		CompletionTimeout:        15000,
+		EnableProgressSpinner:    true,
+		EnableCompletionProvider: true,
+		ProgressUpdateInterval:   200,
 	}
 }
 
@@ -72,6 +74,7 @@ func Load() *Config {
 	completionTimeout := flag.Int("completion-timeout", getEnvOrDefaultInt("COMPLETION_TIMEOUT", cfg.CompletionTimeout), "Completion timeout (ms)")
 	debugQuery := flag.String("debug-query", "", "Debug mode: test provider with a query and exit")
 	enableProgressSpinner := flag.Bool("enable-progress-spinner", getEnvOrDefaultBool("ENABLE_PROGRESS_SPINNER", cfg.EnableProgressSpinner), "Enable animated progress spinner")
+	disableCompletionProvider := flag.Bool("disable-completion-provider", false, "Disable completion provider")
 	progressUpdateInterval := flag.Int("progress-update-interval", getEnvOrDefaultInt("PROGRESS_UPDATE_INTERVAL", cfg.ProgressUpdateInterval), "Progress update interval (ms)")
 
 	flag.Parse()
@@ -94,6 +97,7 @@ func Load() *Config {
 	cfg.CompletionTimeout = *completionTimeout
 	cfg.DebugQuery = *debugQuery
 	cfg.EnableProgressSpinner = *enableProgressSpinner
+	cfg.EnableCompletionProvider = !*disableCompletionProvider
 	cfg.ProgressUpdateInterval = *progressUpdateInterval
 
 	return cfg

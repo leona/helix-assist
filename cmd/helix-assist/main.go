@@ -87,19 +87,23 @@ func main() {
 	}
 
 	capabilities := lsp.ServerCapabilities{
-		TextDocumentSync: 1,
-		CompletionProvider: &lsp.CompletionOptions{
-			TriggerCharacters: cfg.TriggerCharacters,
-		},
+		TextDocumentSync:   1,
 		CodeActionProvider: true,
 		ExecuteCommandProvider: &lsp.ExecuteCommandOptions{
 			Commands: handlers.CommandKeys(),
 		},
 	}
+	if cfg.EnableCompletionProvider {
+		capabilities.CompletionProvider = &lsp.CompletionOptions{
+			TriggerCharacters: cfg.TriggerCharacters,
+		}
+	}
 
 	svc := lsp.NewService(capabilities, logger, Version)
-	completionHandler := handlers.NewCompletionHandler(cfg, registry)
-	completionHandler.Register(svc)
+	if cfg.EnableCompletionProvider {
+		completionHandler := handlers.NewCompletionHandler(cfg, registry)
+		completionHandler.Register(svc)
+	}
 	actionHandler := handlers.NewActionHandler(cfg, registry)
 	actionHandler.Register(svc)
 	logger.Log("LSP service initialized, listening on stdin")
