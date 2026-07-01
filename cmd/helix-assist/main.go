@@ -63,7 +63,7 @@ func main() {
 	}
 
 	if strings.HasPrefix(cfg.Handler, "pi ") {
-		piProvider := providers.NewPiProvider(cfg.Handler)
+		piProvider := providers.NewPiProvider(cfg.Handler, logger)
 		registry.Register("pi", piProvider)
 		logger.Log("Registered pi provider", "cli:", cfg.Handler)
 		cfg.Handler = "pi"

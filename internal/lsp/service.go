@@ -192,7 +192,7 @@ func (s *Service) emit(method string, msg *JSONRPCMessage) {
 	s.mu.RUnlock()
 
 	for _, handler := range handlers {
-		go func(h EventHandler) {
+		func(h EventHandler) {
 			defer func() {
 				if r := recover(); r != nil {
 					s.Logger.Log("handler panic:", method, r)

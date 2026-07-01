@@ -89,7 +89,7 @@ func (h *ActionHandler) Register(svc *lsp.Service) {
 	})
 
 	svc.On(lsp.EventExecuteCommand, func(svc *lsp.Service, msg *lsp.JSONRPCMessage) {
-		h.executeCommand(svc, msg)
+		go h.executeCommand(svc, msg)
 	})
 }
 
