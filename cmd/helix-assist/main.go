@@ -62,6 +62,9 @@ func main() {
 		logger.Log("Registered Anthropic provider", "completion model:", cfg.AnthropicModel, "chat model:", chatModel)
 	}
 
+	// TODO: Register the custom CLI provider when cfg.Handler == "custom".
+	// TODO: Register the fake provider when cfg.Handler == "fake".
+
 	if err := registry.SetCurrent(cfg.Handler); err != nil {
 		fmt.Fprintf(os.Stderr, "Provider error: %s\n", err.Error())
 		os.Exit(1)

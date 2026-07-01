@@ -100,6 +100,7 @@ func Load() *Config {
 }
 
 func (c *Config) Validate() error {
+	// TODO: Allow handler == "custom" or "fake" and skip API key validation for them.
 	if c.Handler != "openai" && c.Handler != "anthropic" {
 		return &ConfigError{Message: "handler must be 'openai' or 'anthropic'"}
 	}
