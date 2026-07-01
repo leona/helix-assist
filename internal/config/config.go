@@ -54,7 +54,7 @@ func Load() *Config {
 	cfg := DefaultConfig()
 
 	// Define flags
-	handler := flag.String("handler", getEnvOrDefault("HANDLER", cfg.Handler), "Provider: openai or anthropic")
+	handler := flag.String("handler", getEnvOrDefault("HANDLER", cfg.Handler), "Provider: openai, anthropic, 'pi <command>', or fake")
 	openaiKey := flag.String("openai-key", getEnvOrDefault("OPENAI_API_KEY", ""), "OpenAI API key")
 	openaiModel := flag.String("openai-model", getEnvOrDefault("OPENAI_MODEL", cfg.OpenAIModel), "OpenAI model")
 	openaiEndpoint := flag.String("openai-endpoint", getEnvOrDefault("OPENAI_ENDPOINT", cfg.OpenAIEndpoint), "OpenAI API endpoint")
@@ -100,9 +100,8 @@ func Load() *Config {
 }
 
 func (c *Config) Validate() error {
-	// TODO: Allow handler == "custom" or "fake" and skip API key validation for them.
-	if c.Handler != "openai" && c.Handler != "anthropic" {
-		return &ConfigError{Message: "handler must be 'openai' or 'anthropic'"}
+	if c.Handler != "openai" && c.Handler != "anthropic" && c.Handler != "fake" && !strings.HasPrefix(c.Handler, "pi ") {
+		return &ConfigError{Message: "handler must be 'openai', 'anthropic', 'pi <command>', or 'fake'"}
 	}
 
 	if c.Handler == "openai" && c.OpenAIKey == "" {

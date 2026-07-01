@@ -62,8 +62,18 @@ func main() {
 		logger.Log("Registered Anthropic provider", "completion model:", cfg.AnthropicModel, "chat model:", chatModel)
 	}
 
-	// TODO: Register the custom CLI provider when cfg.Handler == "custom".
-	// TODO: Register the fake provider when cfg.Handler == "fake".
+	if strings.HasPrefix(cfg.Handler, "pi ") {
+		piProvider := providers.NewPiProvider(cfg.Handler)
+		registry.Register("pi", piProvider)
+		logger.Log("Registered pi provider", "cli:", cfg.Handler)
+		cfg.Handler = "pi"
+	}
+
+	if cfg.Handler == "fake" {
+		fakeProvider := providers.NewFakeProvider()
+		registry.Register("fake", fakeProvider)
+		logger.Log("Registered fake provider")
+	}
 
 	if err := registry.SetCurrent(cfg.Handler); err != nil {
 		fmt.Fprintf(os.Stderr, "Provider error: %s\n", err.Error())
