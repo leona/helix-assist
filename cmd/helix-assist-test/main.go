@@ -62,6 +62,7 @@ func main() {
 		openaiProvider := providers.NewOpenAIProvider(
 			*openaiKey,
 			*openaiModel,
+			"",
 			*openaiEndpoint,
 			*timeoutMs,
 			logger,
@@ -79,6 +80,7 @@ func main() {
 		anthropicProvider := providers.NewAnthropicProvider(
 			*anthropicKey,
 			*anthropicModel,
+			"",
 			*anthropicEndpoint,
 			*timeoutMs,
 			logger,
