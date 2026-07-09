@@ -26,29 +26,31 @@ var reasoningModels = map[string]bool{
 }
 
 type OpenAIProvider struct {
-	apiKey    string
-	model     string
-	chatModel string
-	endpoint  string
-	timeout   time.Duration
-	logger    *lsp.Logger
+	apiKey      string
+	model       string
+	chatModel   string
+	endpoint    string
+	serviceTier string
+	timeout     time.Duration
+	logger      *lsp.Logger
 }
 
 func isReasoningModel(model string) bool {
 	return reasoningModels[model]
 }
 
-func NewOpenAIProvider(apiKey, model, chatModel, endpoint string, timeoutMs int, logger *lsp.Logger) *OpenAIProvider {
+func NewOpenAIProvider(apiKey, model, chatModel, endpoint, serviceTier string, timeoutMs int, logger *lsp.Logger) *OpenAIProvider {
 	if chatModel == "" {
 		chatModel = model
 	}
 	return &OpenAIProvider{
-		apiKey:    apiKey,
-		model:     model,
-		chatModel: chatModel,
-		endpoint:  strings.TrimSuffix(endpoint, "/"),
-		timeout:   time.Duration(timeoutMs) * time.Millisecond,
-		logger:    logger,
+		apiKey:      apiKey,
+		model:       model,
+		chatModel:   chatModel,
+		endpoint:    strings.TrimSuffix(endpoint, "/"),
+		serviceTier: serviceTier,
+		timeout:     time.Duration(timeoutMs) * time.Millisecond,
+		logger:      logger,
 	}
 }
 
@@ -90,7 +92,7 @@ func (p *OpenAIProvider) Completion(ctx context.Context, req CompletionRequest, 
 			Instructions: instructions,
 			Input:        userPrompt,
 			Store:        false,
-			ServiceTier:  "priority",
+			ServiceTier:  p.serviceTier,
 			MaxToolCalls: 0,
 			Metadata: map[string]interface{}{
 				"language": languageID,
@@ -145,7 +147,7 @@ func (p *OpenAIProvider) Chat(ctx context.Context, query, content, filepath, lan
 		Instructions: instructions,
 		Input:        userContent,
 		Store:        false,
-		ServiceTier:  "priority",
+		ServiceTier:  p.serviceTier,
 		MaxToolCalls: 0,
 		Metadata: map[string]interface{}{
 			"language": languageID,

@@ -108,6 +108,7 @@ language-servers = ["pylsp", "helix-assist"]
 | `OPENAI_API_KEY` | - | OpenAI API key |
 | `OPENAI_MODEL` | `gpt-4.1-mini` | OpenAI model for completions |
 | `OPENAI_ENDPOINT` | `https://api.openai.com/v1` | OpenAI API endpoint |
+| `OPENAI_SERVICE_TIER` | `priority` | OpenAI service tier |
 | `ANTHROPIC_API_KEY` | - | Anthropic API key |
 | `ANTHROPIC_MODEL` | `claude-sonnet-4-5` | Anthropic model |
 | `ANTHROPIC_ENDPOINT` | `https://api.anthropic.com` | Anthropic API endpoint |

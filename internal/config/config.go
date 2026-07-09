@@ -13,6 +13,7 @@ type Config struct {
 	OpenAIModel            string
 	OpenAIModelForChat     string
 	OpenAIEndpoint         string
+	OpenAIServiceTier      string
 	AnthropicKey           string
 	AnthropicModel         string
 	AnthropicModelForChat  string
@@ -35,6 +36,7 @@ func DefaultConfig() *Config {
 		OpenAIModel:            "gpt-4.1",
 		OpenAIModelForChat:     "gpt-5",
 		OpenAIEndpoint:         "https://api.openai.com/v1",
+		OpenAIServiceTier:      "priority",
 		AnthropicModel:         "claude-haiku-4-5",
 		AnthropicModelForChat:  "claude-sonnet-4-5",
 		AnthropicEndpoint:      "https://api.anthropic.com",
@@ -58,6 +60,7 @@ func Load() *Config {
 	openaiKey := flag.String("openai-key", getEnvOrDefault("OPENAI_API_KEY", ""), "OpenAI API key")
 	openaiModel := flag.String("openai-model", getEnvOrDefault("OPENAI_MODEL", cfg.OpenAIModel), "OpenAI model")
 	openaiEndpoint := flag.String("openai-endpoint", getEnvOrDefault("OPENAI_ENDPOINT", cfg.OpenAIEndpoint), "OpenAI API endpoint")
+	openaiServiceTier := flag.String("openai-service-tier", getEnvOrDefault("OPENAI_SERVICE_TIER", cfg.OpenAIServiceTier), "OpenAI service tier (auto, default, flex, on_demand, performance)")
 	anthropicKey := flag.String("anthropic-key", getEnvOrDefault("ANTHROPIC_API_KEY", ""), "Anthropic API key")
 	anthropicModel := flag.String("anthropic-model", getEnvOrDefault("ANTHROPIC_MODEL", cfg.AnthropicModel), "Anthropic model")
 	anthropicEndpoint := flag.String("anthropic-endpoint", getEnvOrDefault("ANTHROPIC_ENDPOINT", cfg.AnthropicEndpoint), "Anthropic API endpoint")
@@ -81,6 +84,7 @@ func Load() *Config {
 	cfg.OpenAIModel = *openaiModel
 	cfg.OpenAIModelForChat = *openaiModelForChat
 	cfg.OpenAIEndpoint = *openaiEndpoint
+	cfg.OpenAIServiceTier = *openaiServiceTier
 	cfg.AnthropicKey = *anthropicKey
 	cfg.AnthropicModel = *anthropicModel
 	cfg.AnthropicModelForChat = *anthropicModelForChat
