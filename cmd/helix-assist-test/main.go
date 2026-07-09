@@ -25,6 +25,7 @@ func main() {
 	openaiKey := flag.String("openai-key", os.Getenv("OPENAI_API_KEY"), "OpenAI API key")
 	openaiModel := flag.String("openai-model", getEnvOrDefault("OPENAI_MODEL", "gpt-4.1-mini"), "OpenAI model")
 	openaiEndpoint := flag.String("openai-endpoint", getEnvOrDefault("OPENAI_ENDPOINT", "https://api.openai.com/v1"), "OpenAI API endpoint")
+	openaiServiceTier := flag.String("openai-service-tier", getEnvOrDefault("OPENAI_SERVICE_TIER", "priority"), "OpenAI service tier")
 
 	anthropicKey := flag.String("anthropic-key", os.Getenv("ANTHROPIC_API_KEY"), "Anthropic API key")
 	anthropicModel := flag.String("anthropic-model", getEnvOrDefault("ANTHROPIC_MODEL", "claude-sonnet-4-5"), "Anthropic model")
@@ -63,6 +64,7 @@ func main() {
 			*openaiKey,
 			*openaiModel,
 			*openaiEndpoint,
+			*openaiServiceTier,
 			*timeoutMs,
 			logger,
 		)

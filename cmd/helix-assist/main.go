@@ -34,6 +34,7 @@ func main() {
 			cfg.OpenAIModel,
 			cfg.OpenAIModelForChat,
 			cfg.OpenAIEndpoint,
+			cfg.OpenAIServiceTier,
 			cfg.FetchTimeout,
 			logger,
 		)
