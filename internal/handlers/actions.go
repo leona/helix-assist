@@ -55,13 +55,30 @@ func (h *ActionHandler) Register(svc *lsp.Service) {
 		}
 
 		svc.Buffers.SetCurrentURI(params.TextDocument.URI)
+
+		content := svc.Buffers.GetContentFromRange(params.TextDocument.URI, params.Range)
+		if strings.TrimSpace(content) == "" {
+			svc.Send(&lsp.JSONRPCMessage{
+				ID:     msg.ID,
+				Result: []lsp.CodeAction{},
+			})
+			return
+		}
+
 		actions := make([]lsp.CodeAction, 0, len(Commands))
 
 		for _, cmd := range Commands {
 			diagnosticMsgs := make([]string, 0, len(params.Context.Diagnostics))
 
 			for _, d := range params.Context.Diagnostics {
+				if !rangesOverlap(d.Range, params.Range) {
+					continue
+				}
 				diagnosticMsgs = append(diagnosticMsgs, d.Message)
+			}
+
+			if cmd.Key == "resolveDiagnostics" && len(diagnosticMsgs) == 0 {
+				continue
 			}
 
 			actions = append(actions, lsp.CodeAction{
@@ -127,12 +144,14 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 	}
 
 	query := cmdArg.Query
+	extendRange := false
 
 	for _, cmd := range Commands {
 		if cmd.Key == params.Command {
 			if query == "" {
 				query = cmd.Query
 			}
+			extendRange = cmd.Key == "resolveDiagnostics"
 			break
 		}
 	}
@@ -154,7 +173,12 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 		svc.SendShowMessage(lsp.MessageTypeInfo, "Executing "+params.Command+"...")
 	}
 
-	content := svc.Buffers.GetContentFromRange(currentURI, cmdArg.Range)
+	editRange := cmdArg.Range
+	if extendRange {
+		editRange = extendToFullLines(cmdArg.Range)
+	}
+
+	content := svc.Buffers.GetContentFromRange(currentURI, editRange)
 	padding := util.GetContentPadding(content)
 
 	buffer, ok := svc.Buffers.Get(currentURI)
@@ -214,7 +238,7 @@ func (h *ActionHandler) executeCommand(svc *lsp.Service, msg *lsp.JSONRPCMessage
 				Changes: map[string][]lsp.TextEdit{
 					currentURI: {
 						{
-							Range:   cmdArg.Range,
+							Range:   editRange,
 							NewText: result,
 						},
 					},
@@ -231,3 +255,28 @@ func mustMarshal(v any) json.RawMessage {
 	}
 	return data
 }
+
+func rangesOverlap(a, b lsp.Range) bool {
+	if a.Start.Line > b.End.Line || b.Start.Line > a.End.Line {
+		return false
+	}
+	if a.End.Line < b.Start.Line || b.End.Line < a.Start.Line {
+		return false
+	}
+	return true
+}
+
+func extendToFullLines(r lsp.Range) lsp.Range {
+	start := r.Start
+	end := r.End
+	start.Character = 0
+	if start.Line == end.Line && r.Start.Character == r.End.Character {
+		end.Line = start.Line + 1
+		end.Character = 0
+	} else if end.Character != 0 {
+		end.Line++
+		end.Character = 0
+	}
+	return lsp.Range{Start: start, End: end}
+}
+

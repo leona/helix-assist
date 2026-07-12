@@ -98,6 +98,42 @@ func (s *BufferStore) GetContentFromRange(uri string, r Range) string {
 		endLine = len(lines) - 1
 	}
 
-	selectedLines := lines[r.Start.Line : endLine+1]
-	return strings.Join(selectedLines, "\n")
+	if r.Start.Line == endLine && r.Start.Character == r.End.Character {
+		return lines[r.Start.Line]
+	}
+
+	if r.Start.Line == endLine {
+		start := r.Start.Character
+		end := r.End.Character
+		if start > len(lines[r.Start.Line]) {
+			start = len(lines[r.Start.Line])
+		}
+		if end > len(lines[r.Start.Line]) {
+			end = len(lines[r.Start.Line])
+		}
+		return lines[r.Start.Line][start:end]
+	}
+
+	result := make([]string, 0, endLine-r.Start.Line+1)
+	firstLine := lines[r.Start.Line]
+	startChar := r.Start.Character
+	if startChar > len(firstLine) {
+		startChar = len(firstLine)
+	}
+	result = append(result, firstLine[startChar:])
+
+	for i := r.Start.Line + 1; i < endLine; i++ {
+		result = append(result, lines[i])
+	}
+
+	lastLine := lines[endLine]
+	endChar := r.End.Character
+	if endChar > len(lastLine) {
+		endChar = len(lastLine)
+	}
+	if endChar > 0 {
+		result = append(result, lastLine[:endChar])
+	}
+
+	return strings.Join(result, "\n")
 }
