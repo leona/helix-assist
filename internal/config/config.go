@@ -24,6 +24,7 @@ type Config struct {
 	FetchTimeout           int
 	ActionTimeout          int
 	CompletionTimeout      int
+	MaxContextChars         int
 	DebugQuery             string
 	EnableProgressSpinner  bool
 	ProgressUpdateInterval int
@@ -44,6 +45,7 @@ func DefaultConfig() *Config {
 		FetchTimeout:           15000,
 		ActionTimeout:          15000,
 		CompletionTimeout:      15000,
+		MaxContextChars:         0,
 		EnableProgressSpinner:  true,
 		ProgressUpdateInterval: 200,
 	}
@@ -70,6 +72,7 @@ func Load() *Config {
 	fetchTimeout := flag.Int("fetch-timeout", getEnvOrDefaultInt("FETCH_TIMEOUT", cfg.FetchTimeout), "Fetch timeout (ms)")
 	actionTimeout := flag.Int("action-timeout", getEnvOrDefaultInt("ACTION_TIMEOUT", cfg.ActionTimeout), "Action timeout (ms)")
 	completionTimeout := flag.Int("completion-timeout", getEnvOrDefaultInt("COMPLETION_TIMEOUT", cfg.CompletionTimeout), "Completion timeout (ms)")
+	maxContextChars := flag.Int("max-context-chars", getEnvOrDefaultInt("MAX_CONTEXT_CHARS", cfg.MaxContextChars), "Max context characters for completions (0 = no limit)")
 	debugQuery := flag.String("debug-query", "", "Debug mode: test provider with a query and exit")
 	enableProgressSpinner := flag.Bool("enable-progress-spinner", getEnvOrDefaultBool("ENABLE_PROGRESS_SPINNER", cfg.EnableProgressSpinner), "Enable animated progress spinner")
 	progressUpdateInterval := flag.Int("progress-update-interval", getEnvOrDefaultInt("PROGRESS_UPDATE_INTERVAL", cfg.ProgressUpdateInterval), "Progress update interval (ms)")
@@ -92,6 +95,7 @@ func Load() *Config {
 	cfg.FetchTimeout = *fetchTimeout
 	cfg.ActionTimeout = *actionTimeout
 	cfg.CompletionTimeout = *completionTimeout
+	cfg.MaxContextChars = *maxContextChars
 	cfg.DebugQuery = *debugQuery
 	cfg.EnableProgressSpinner = *enableProgressSpinner
 	cfg.ProgressUpdateInterval = *progressUpdateInterval

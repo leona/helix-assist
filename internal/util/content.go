@@ -1,6 +1,7 @@
 package util
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -96,6 +97,46 @@ func PadContent(text string, padding int) string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+func TruncateContext(before, after string, maxChars int) (string, string) {
+	if maxChars <= 0 {
+		return before, after
+	}
+
+	total := len(before) + len(after)
+	if total <= maxChars {
+		return before, after
+	}
+
+	excess := total - maxChars
+	beforeLen := len(before)
+
+	removeBefore := excess * beforeLen / total
+	removeAfter := excess - removeBefore
+
+	if removeBefore > 0 {
+		start := removeBefore
+		if idx := strings.Index(before[start:], "\n"); idx >= 0 {
+			start += idx
+		}
+		before = "// ... [truncated " + strconv.Itoa(removeBefore) + " chars]\n" + before[start:]
+	}
+
+	if removeAfter > 0 {
+		end := len(after) - removeAfter
+		if end > 0 {
+			beforeCut := after[:end]
+			if idx := strings.LastIndex(beforeCut, "\n"); idx >= 0 {
+				end = idx + 1
+			}
+		} else {
+			end = 0
+		}
+		after = after[:end] + "\n// ... [truncated " + strconv.Itoa(removeAfter) + " chars]"
+	}
+
+	return before, after
 }
 
 func UniqueStrings(items []string) []string {
