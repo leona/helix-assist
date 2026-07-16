@@ -100,8 +100,10 @@ func (h *CompletionHandler) doCompletion(svc *lsp.Service, msg *lsp.JSONRPCMessa
 		}
 	}
 
+	contentBefore, contentAfter := util.TruncateContext(content.ContentBefore, contentAfter, h.cfg.MaxContextChars)
+
 	hints, err := h.registry.Completion(ctx, providers.CompletionRequest{
-		ContentBefore: content.ContentBefore,
+		ContentBefore: contentBefore,
 		ContentAfter:  contentAfter,
 	}, params.TextDocument.URI, buffer.LanguageID, h.cfg.NumSuggestions)
 
